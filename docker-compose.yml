@@ -41,7 +41,7 @@ services:
 
   frontend:
     build:
-      context: D:\\repos\\Korp_Teste_Gabriel\\Korp-Frontend-Gabriel
+      context: ${FRONTEND_CONTEXT:-./Korp-Frontend-Gabriel}
       dockerfile: Dockerfile
     ports:
       - "4200:80"
