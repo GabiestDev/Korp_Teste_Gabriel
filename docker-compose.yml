@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  estoque:
+    build:
+      context: .
+      dockerfile: Korp.Estoque.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__EstoqueDb=Host=db;Port=5432;Database=EstoqueDB;Username=postgres;Password=postgres
+      - ASPNETCORE_URLS=http://+:5090
+    depends_on:
+      - db
+    ports:
+      - "5090:5090"
+
+  faturamento:
+    build:
+      context: .
+      dockerfile: Korp.Faturamento.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__FaturamentoDb=Host=db;Port=5432;Database=FaturamentoDB;Username=postgres;Password=postgres
+      - EstoqueService__BaseUrl=http://estoque:5090
+      - ASPNETCORE_URLS=http://+:5164
+    depends_on:
+      - db
+      - estoque
+    ports:
+      - "5164:5164"
+
+  frontend:
+    build:
+      context: D:/repos/Korp_Teste_Gabriel/Korp-Frontend-Gabriel
+      dockerfile: Dockerfile
+    ports:
+      - "4200:80"
+    depends_on:
+      - faturamento
+
+volumes:
+  db-data:
