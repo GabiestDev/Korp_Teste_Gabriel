@@ -1,0 +1,96 @@
+<section class="page-card">
+  <div class="page-header">
+    <h2>Gestão de Notas Fiscais</h2>
+  </div>
+
+  <div class="toolbar-row">
+    <mat-form-field appearance="outline" class="field-wide">
+      <mat-label>Produto</mat-label>
+      <mat-select [(ngModel)]="novoProdutoId">
+        @for (produto of produtosDisponiveis; track produto.id) {
+          <mat-option [value]="produto.id">
+            {{ produto.descricao }} ({{ produto.codigo }}) - Saldo: {{ produto.saldo }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>Quantidade</mat-label>
+      <input matInput type="number" min="1" [(ngModel)]="novaQuantidade">
+    </mat-form-field>
+
+    <div class="form-actions">
+      <button mat-flat-button class="secondary-btn" (click)="adicionarItem()" style="background: linear-gradient(135deg, #2b485a 0%, #203739 100%) !important; color: #fff !important; border: none !important;">
+        Adicionar Item
+      </button>
+      <button mat-flat-button class="primary-btn" (click)="criarNota()" style="background: linear-gradient(135deg, #2b485a 0%, #203739 100%) !important; color: #fff !important; border: none !important;">
+        Gerar Nota
+      </button>
+    </div>
+  </div>
+
+  @if (itensAdicionados.length) {
+    <div class="info-box">
+      <strong>Itens da nota atual</strong>
+      <div class="item-tags">
+        @for (item of itensAdicionados; track item.produtoId + ':' + item.quantidade) {
+          <span class="item-tag">
+            {{ obterDescricaoProduto(item.produtoId) }} · {{ item.quantidade }} un.
+          </span>
+        }
+      </div>
+    </div>
+  }
+
+  @if (notas.length === 0) {
+    <p class="empty-state">Nenhuma nota fiscal cadastrada.</p>
+  } @else {
+    <div class="table-wrap">
+      <table mat-table [dataSource]="notas" class="mat-elevation-z0">
+        <ng-container matColumnDef="numeroSequencial">
+          <th mat-header-cell *matHeaderCellDef> Número da Nota </th>
+          <td mat-cell *matCellDef="let n"> {{ n.numeroSequencial ?? n.id }} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="produtos">
+          <th mat-header-cell *matHeaderCellDef> Produtos </th>
+          <td mat-cell *matCellDef="let n">
+            <span *ngIf="n.itens?.length; else semItens">
+              {{ n.itens.map(item => obterDescricaoProduto(item.produtoId) + ' x' + item.quantidade).join(', ') }}
+            </span>
+            <ng-template #semItens>-</ng-template>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef> Status </th>
+          <td mat-cell *matCellDef="let n">
+            <span class="status-badge" [class.closed]="obterStatusTexto(n.status) === 'Fechada'">
+              {{ obterStatusTexto(n.status) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef> Ações </th>
+          <td mat-cell *matCellDef="let n">
+            <button
+              mat-flat-button
+              class="print-btn"
+              (click)="imprimir(n.id)"
+              [disabled]="imprimindoId === n.id || obterStatusTexto(n.status) === 'Fechada'"
+              style="background: linear-gradient(135deg, #2b485a 0%, #203739 100%) !important; color: #fff !important; border: none !important;"
+            >
+              <span *ngIf="imprimindoId !== n.id">Imprimir</span>
+              <mat-spinner *ngIf="imprimindoId === n.id" diameter="20"></mat-spinner>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="colunas"></tr>
+        <tr mat-row *matRowDef="let row; columns: colunas;"></tr>
+      </table>
+    </div>
+  }
+</section>
