@@ -46,4 +46,3 @@ O compose foi configurado para permitir rodar em qualquer máquina. Configure on
 5) Parar e remover:
    docker compose down -v
 
-Se preferir que o frontend seja movido automaticamente para dentro do repositório (por exemplo copiado para ./frontend durante um script), posso adicionar essa etapa, mas normalmente é melhor que o frontend exista no repositório (ou como submódulo) para evitar cópias repetidas e grandes node_modules no histórico do Git.
