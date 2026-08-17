@@ -38,9 +38,10 @@ static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
         .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
 }
 
+var estoqueBase = builder.Configuration.GetValue<string>("EstoqueService:BaseUrl") ?? "http://localhost:5164";
 builder.Services.AddHttpClient("EstoqueClient", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:5164");
+    client.BaseAddress = new Uri(estoqueBase);
 })
 .AddPolicyHandler(GetRetryPolicy())
 .AddPolicyHandler(GetCircuitBreakerPolicy());
