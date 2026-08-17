@@ -1,0 +1,6 @@
+@Korp.Faturamento.API_HostAddress = http://localhost:5164
+
+GET {{Korp.Faturamento.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,60 @@
+[
+  {
+    "ContainingType": "Korp.Faturamento.API.Controllers.NotaFiscalController",
+    "Method": "CriarNota",
+    "RelativePath": "api/NotaFiscal",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "Korp.Faturamento.API.DTOs.CriarNotaFiscalDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Korp.Faturamento.API.Controllers.NotaFiscalController",
+    "Method": "ListarTodas",
+    "RelativePath": "api/NotaFiscal",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Korp.Faturamento.API.Controllers.NotaFiscalController",
+    "Method": "ObterNota",
+    "RelativePath": "api/NotaFiscal/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Korp.Faturamento.API.Controllers.NotaFiscalController",
+    "Method": "ImprimirNota",
+    "RelativePath": "api/NotaFiscal/{id}/imprimir",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]

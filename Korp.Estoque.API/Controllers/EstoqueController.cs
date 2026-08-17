@@ -1,0 +1,204 @@
+﻿using Korp.Estoque.API.Data;
+using Korp.Estoque.API.DTOs;
+using Korp.Estoque.API.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace Korp.Estoque.API.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class EstoqueController : ControllerBase
+    {
+        private readonly EstoqueDbContext _context;
+
+        public EstoqueController(EstoqueDbContext context)
+        {
+            _context = context;
+        }
+
+        [HttpGet("produto")]
+        public async Task<IActionResult> ListarProdutos()
+        {
+            var produtos = await _context.Produtos
+                .OrderBy(p => p.Id)
+                .ToListAsync();
+
+            return Ok(produtos);
+        }
+
+        [HttpPost("baixar")]
+        public async Task<IActionResult> BaixarEstoque([FromBody] BaixarEstoqueDto dto)
+        {
+            // Idempotency handling
+            var idempotencyKey = Request.Headers["X-Idempotency-Key"].FirstOrDefault();
+            var requestBody = System.Text.Json.JsonSerializer.Serialize(dto);
+            var requestHash = System.BitConverter.ToString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(requestBody))).Replace("-", "");
+            var requestHeaders = string.Join(';', Request.Headers.Select(h => h.Key + ":" + string.Join(',', h.Value)));
+
+            if (!string.IsNullOrEmpty(idempotencyKey))
+            {
+                var existing = await _context.IdempotencyEntries
+                    .FirstOrDefaultAsync(e => e.Key == idempotencyKey && e.Route == "baixar");
+                if (existing != null)
+                {
+                    // if expired allow re-execution
+                    if (existing.ExpiresAt != null && existing.ExpiresAt < DateTime.UtcNow)
+                    {
+                        // fallthrough to re-execute
+                    }
+                    else if (!string.IsNullOrEmpty(existing.RequestHash) && existing.RequestHash != requestHash)
+                    {
+                        return Conflict(new { message = "Idempotency key reused with different payload." });
+                    }
+                    else
+                    {
+                        return new ContentResult
+                        {
+                            StatusCode = existing.ResponseStatus,
+                            Content = existing.ResponseBody,
+                            ContentType = "application/json"
+                        };
+                    }
+                }
+            }
+
+            var produto = await _context.Produtos.FindAsync(dto.ProdutoId);
+
+            if (produto == null)
+            {
+                var notFound = new { message = "Produto não encontrado no estoque." };
+                if (!string.IsNullOrEmpty(idempotencyKey))
+                {
+                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
+                    {
+                        Key = idempotencyKey,
+                        Route = "baixar",
+                        RequestHash = requestHash,
+                        RequestHeaders = requestHeaders,
+                        ResponseStatus = 404,
+                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(notFound),
+                        ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                return NotFound(notFound);
+            }
+
+            if (produto.Saldo < dto.Quantidade)
+            {
+                var bad = new { message = $"Saldo insuficiente. Saldo atual: {produto.Saldo}" };
+                if (!string.IsNullOrEmpty(idempotencyKey))
+                {
+                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
+                    {
+                        Key = idempotencyKey,
+                        Route = "baixar",
+                        RequestHash = requestHash,
+                        RequestHeaders = requestHeaders,
+                        ResponseStatus = 400,
+                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(bad),
+                        ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                return BadRequest(bad);
+            }
+
+            produto.Saldo -= dto.Quantidade;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                var ok = new { message = "Estoque atualizado com sucesso." };
+
+                if (!string.IsNullOrEmpty(idempotencyKey))
+                {
+                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
+                    {
+                        Key = idempotencyKey,
+                        Route = "baixar",
+                        RequestHash = requestHash,
+                        RequestHeaders = requestHeaders,
+                        ResponseStatus = 200,
+                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(ok),
+                            ExpiresAt = DateTime.UtcNow.AddMinutes(60) // configurable expiry
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(ok);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                var conflict = new { message = "Conflito de concorrência: O saldo deste produto foi atualizado por outra transação simultânea. Tente novamente." };
+                if (!string.IsNullOrEmpty(idempotencyKey))
+                {
+                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
+                    {
+                        Key = idempotencyKey,
+                        Route = "baixar",
+                        ResponseStatus = 409,
+                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(conflict)
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                return Conflict(conflict);
+            }
+            catch (Exception ex)
+            {
+                var err = new { message = "Erro interno ao atualizar estoque.", detalhe = ex.Message };
+                if (!string.IsNullOrEmpty(idempotencyKey))
+                {
+                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
+                    {
+                        Key = idempotencyKey,
+                        Route = "baixar",
+                        ResponseStatus = 500,
+                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(err)
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                return StatusCode(500, err);
+            }
+        }
+
+        [HttpPost("produto")]
+        public async Task<IActionResult> CadastrarProduto([FromBody] Produto produto)
+        {
+            if (string.IsNullOrWhiteSpace(produto.Codigo) || string.IsNullOrWhiteSpace(produto.Descricao))
+                return BadRequest(new { message = "Código e descrição são obrigatórios." });
+
+            if (produto.Saldo < 0)
+                return BadRequest(new { message = "Saldo não pode ser negativo." });
+
+            var produtoExistente = await _context.Produtos
+                .AnyAsync(p => p.Codigo == produto.Codigo);
+
+            if (produtoExistente)
+                return Conflict(new { message = $"Produto com código {produto.Codigo} já cadastrado." });
+
+            _context.Produtos.Add(produto);
+            await _context.SaveChangesAsync();
+            return CreatedAtAction(nameof(ListarProdutos), new { id = produto.Id }, produto);
+        }
+
+        [HttpPost("estornar")]
+        public async Task<IActionResult> Estornar([FromBody] BaixarEstoqueDto dto)
+        {
+            var produto = await _context.Produtos.FindAsync(dto.ProdutoId);
+
+            if (produto == null)
+                return NotFound(new { message = "Produto não encontrado no estoque." });
+
+            produto.Saldo += dto.Quantidade;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Estorno realizado com sucesso." });
+        }
+    }
+}
