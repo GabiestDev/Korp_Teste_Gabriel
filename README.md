@@ -33,7 +33,12 @@ O compose foi configurado para permitir rodar em qualquer máquina. Configure on
    Ou manualmente:
    docker compose --env-file .env up --build -d
 
-4) Checagens e endpoints:
+4) Se o frontend estiver em outro local e quiser copiar para o repositório automaticamente (recomendado para portabilidade):
+   - Windows PowerShell: .\import-frontend.ps1 "D:\\repos\\Korp_Teste_Gabriel\\Korp-Frontend-Gabriel"
+   - macOS/Linux: ./import-frontend.sh "/path/to/Korp-Frontend-Gabriel"
+   - Os scripts copiam o conteúdo para ./Korp-Frontend-Gabriel e excluem node_modules, .git, dist e caches.
+
+5) Checagens e endpoints:
    - Frontend: http://localhost:4200
    - Estoque health: http://localhost:5090/health
    - Faturamento health: http://localhost:5164/health

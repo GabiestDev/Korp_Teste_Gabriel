@@ -1,0 +1,9 @@
+/Korp-Frontend-Gabriel/node_modules/
+/Korp-Frontend-Gabriel/dist/
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
