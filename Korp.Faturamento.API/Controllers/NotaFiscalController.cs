@@ -273,6 +273,10 @@ namespace Korp.Faturamento.API.Controllers
             {
                 return StatusCode(503, new { message = "O serviço de estoque está temporariamente indisponível. A impressão foi cancelada." });
             }
+            catch (Polly.CircuitBreaker.BrokenCircuitException)
+            {
+                return StatusCode(503, new { message = "O serviço de estoque está temporariamente indisponível. A impressão foi cancelada." });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Erro interno durante a impressão.", detalhe = ex.Message });

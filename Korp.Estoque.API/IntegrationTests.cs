@@ -7,8 +7,8 @@ using FluentAssertions;
 
 public class IntegrationConcurrencyTests
 {
-    private const string EstoqueUrl = "http://localhost:5164";
-    private const string FaturamentoUrl = "http://localhost:5090";
+    private const string EstoqueUrl = "http://localhost:5090";
+    private const string FaturamentoUrl = "http://localhost:5164";
 
     [Fact]
     public async Task ConcurrentPrints_OneSucceeds_OneFails_ProductConsistent()
