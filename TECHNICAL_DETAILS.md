@@ -1,6 +1,5 @@
 # Detalhamento Técnico
 
-Este documento resume as decisões técnicas e o que foi encontrado no código do repositório.
 
 1) Ciclos de vida do Angular utilizados
 - Apenas o ciclo OnInit é utilizado nos componentes vistos (ex.: [ProdutosComponent](D:/repos/Korp_Teste_Gabriel.worktrees/docker-check-update-docs-tech-details/Korp-Frontend-Gabriel/src/app/pages/produtos/produtos.ts) e [NotasFiscaisComponent](D:/repos/Korp_Teste_Gabriel.worktrees/docker-check-update-docs-tech-details/Korp-Frontend-Gabriel/src/app/pages/notas-fiscais/notas-fiscais.ts)). Os componentes implementam ngOnInit para carregar dados iniciais.
@@ -54,11 +53,3 @@ Este documento resume as decisões técnicas e o que foi encontrado no código d
   - `dto.Itens.Select(...)` (construção de entities a partir do DTO) em [NotaFiscalController](D:/repos/Korp_Teste_Gabriel.worktrees/docker-check-update-docs-tech-details/Korp.Faturamento.API/Controllers/NotaFiscalController.cs).
   - Consultas com `OrderBy`, `Include`, `FirstOrDefaultAsync`, `AnyAsync` e `ToListAsync` (ex.: em [EstoqueController](D:/repos/Korp_Teste_Gabriel.worktrees/docker-check-update-docs-tech-details/Korp.Estoque.API/Controllers/EstoqueController.cs)).
 
-Observações finais
-- Docker: verificado e OK nesta máquina (versões listadas no README). Para garantir que a stack suba, verifique se as variáveis no `.env` (copiadas de `.env.example`) estão corretas e que as portas não estejam em uso.
-- .gitignore: atualizado para ignorar bancos locais (`*.db`), arquivos de ambiente, artefatos de build e IDEs.
-
-Se desejar, posso:
-- Desfazer/ajustar entradas do .gitignore (por exemplo, manter certos .db rastreados caso queira),
-- Remover arquivos binários já versionados (ex.: `.db` que já foram commitados) e adicionar um passo para `git rm --cached` e commit;
-- Abrir um commit na main com as alterações feitas (faço o commit agora se quiser).
