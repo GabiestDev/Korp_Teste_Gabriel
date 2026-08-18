@@ -18,5 +18,7 @@ namespace Korp.Estoque.API.Models
         [Required]
         [ConcurrencyCheck]
         public int Saldo { get; set; }
+
+        public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
     }
 }

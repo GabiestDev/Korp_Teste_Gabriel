@@ -9,8 +9,8 @@
 
   <div class="login-form">
     <mat-form-field appearance="outline" class="field-wide">
-      <mat-label>E-mail</mat-label>
-      <input matInput type="email" [(ngModel)]="email" (keydown.enter)="entrar()">
+      <mat-label>Username</mat-label>
+      <input matInput [(ngModel)]="username" (keydown.enter)="entrar()">
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="field-wide">
@@ -22,6 +22,6 @@
       <button mat-flat-button class="primary-btn" (click)="entrar()">Entrar</button>
     </div>
 
-    <p class="login-hint">Acesso simulado: use qualquer e-mail e senha para entrar.</p>
+    <p class="login-hint">Acesso simulado: use qualquer usuário e senha para entrar.</p>
   </div>
 </section>

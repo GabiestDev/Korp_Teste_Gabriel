@@ -34,7 +34,7 @@ describe('NotaFiscalService', () => {
 
     const req = httpMock.expectOne(`${environment.apiUrlFaturamento}`);
     expect(req.request.method).toBe('POST');
-    req.flush({ id: 1, status: 'Aberta' });
+    req.flush({ statusCode: 201, message: 'ok', timestamp: '2026-01-01', data: { id: 1, status: 'Aberta' } });
   });
 
   it('should print an invoice via the billing microservice', () => {
@@ -46,6 +46,6 @@ describe('NotaFiscalService', () => {
 
     const req = httpMock.expectOne(`${environment.apiUrlFaturamento}/${id}/imprimir`);
     expect(req.request.method).toBe('POST');
-    req.flush({ id: 1, status: 'Fechada' });
+    req.flush({ statusCode: 200, message: 'ok', timestamp: '2026-01-01', data: { id: 1, status: 'Fechada' } });
   });
 });

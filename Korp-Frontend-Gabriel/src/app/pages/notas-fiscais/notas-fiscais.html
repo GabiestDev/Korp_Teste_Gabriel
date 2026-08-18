@@ -53,6 +53,13 @@
           <td mat-cell *matCellDef="let n"> {{ n.numeroSequencial ?? n.id }} </td>
         </ng-container>
 
+        <ng-container matColumnDef="dataCriacao">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header> Criada em </th>
+          <td mat-cell *matCellDef="let n">
+            {{ n.dataCriacao ? (n.dataCriacao | date: 'dd/MM/yyyy HH:mm') : '-' }}
+          </td>
+        </ng-container>
+
         <ng-container matColumnDef="produtos">
           <th mat-header-cell *matHeaderCellDef> Produtos </th>
           <td mat-cell *matCellDef="let n">

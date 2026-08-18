@@ -6,10 +6,11 @@ const FATURAMENTO = 'http://localhost:5164/api/NotaFiscal';
 
 const TS = Date.now();
 const CODIGO = `E2E-${TS}`;
+const CODIGO_UI = `E2E-UI-${TS}`;
 
 test.beforeEach(async ({ page }) => {
   await page.goto(`${BASE}/login`);
-  await page.getByLabel('E-mail').fill('gabriel@korp.com');
+  await page.getByLabel('Username').fill('gabriel');
   await page.getByLabel('Senha').fill('senha123');
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL('**/notas-fiscais');
@@ -25,7 +26,7 @@ test('01 - rota protegida redireciona para /login sem autenticacao', async ({ pa
 test('02 - login com campos vazios mostra erro', async ({ page }) => {
   await page.goto(`${BASE}/login`);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('alert')).toContainText('Informe e-mail e senha');
+  await expect(page.getByRole('alert')).toContainText('Informe usuário e senha');
 });
 
 test('03 - logout retorna para /login', async ({ page }) => {
@@ -51,16 +52,20 @@ test('06 - erro de rede exibe snackbar via interceptor', async ({ page }) => {
 
 test('07 - Frontend /produtos: cadastrar novo produto pela UI', async ({ page }) => {
   await page.goto(`${BASE}/produtos`);
-  await page.getByLabel('Código').fill(CODIGO);
+  await page.getByLabel('Código').fill(CODIGO_UI);
   await page.getByLabel('Descrição').fill('Produto E2E');
   await page.getByLabel('Saldo').fill('3');
   await page.getByRole('button', { name: 'Cadastrar Produto' }).click();
-  await expect(page.getByRole('cell', { name: CODIGO })).toBeVisible();
+  await expect(page.getByText('Produto cadastrado com sucesso.')).toBeVisible();
+  await page.getByRole('button', { name: 'OK' }).click();
+  await page.getByLabel('Last page').click();
+  await expect(page.getByRole('cell', { name: CODIGO_UI })).toBeVisible();
 });
 
 test('08 - Frontend /notas-fiscais: criar nota e imprimir (fluxo completo)', async ({ page }) => {
   await page.goto(`${BASE}/notas-fiscais`);
-  const p = await (await (await page.request.get(`${ESTOQUE}/produto`)).json()).find((x) => x.codigo === CODIGO);
+  const lista = await (await page.request.get(`${ESTOQUE}/produto`)).json();
+  const p = lista.data.find((x) => x.codigo === CODIGO);
   if (!p) {
     const novo = await page.request.post(`${ESTOQUE}/produto`, { data: { codigo: CODIGO, descricao: 'Produto E2E', saldo: 10 } });
     if (!novo.ok()) throw new Error('falha ao criar produto');
@@ -74,7 +79,7 @@ test('08 - Frontend /notas-fiscais: criar nota e imprimir (fluxo completo)', asy
 
 test('09 - API: idempotency retorna mesma nota no replay (camelCase)', async ({ request }) => {
   const list = await (await request.get(`${ESTOQUE}/produto`)).json();
-  const p = list.find((x) => x.codigo === CODIGO);
+  const p = list.data.find((x) => x.codigo === CODIGO);
   const body = { itens: [{ produtoId: p.id, quantidade: 1 }] };
   const key = `teste-${TS}`;
   const r1 = await request.post(`${FATURAMENTO}`, { data: body, headers: { 'X-Idempotency-Key': key } });
@@ -83,8 +88,8 @@ test('09 - API: idempotency retorna mesma nota no replay (camelCase)', async ({ 
   expect(r2.status()).toBe(201);
   const b1 = await r1.json();
   const b2 = await r2.json();
-  expect(b1.id).toBeTruthy();
-  expect(b2.id).toBe(b1.id);
-  expect(b1.numeroSequencial).toBeDefined();
-  expect(b2.numeroSequencial).toBeDefined();
+  expect(b1.data.id).toBeTruthy();
+  expect(b2.data.id).toBe(b1.data.id);
+  expect(b1.data.numeroSequencial).toBeDefined();
+  expect(b2.data.numeroSequencial).toBeDefined();
 });

@@ -44,10 +44,11 @@ catch (Exception ex)
     app.Logger.LogError(ex, "Não foi possível conectar ao PostgreSQL do Estoque. O serviço continuará em modo degradado.");
 }
 
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.UseSwaggerUI(options =>
 {
-    app.MapOpenApi();
-}
+    options.SwaggerEndpoint("/openapi/v1.json", "Korp Estoque v1");
+});
 
 app.MapGet("/health", async () =>
 {

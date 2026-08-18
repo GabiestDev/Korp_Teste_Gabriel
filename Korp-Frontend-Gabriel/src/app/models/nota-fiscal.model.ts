@@ -12,6 +12,7 @@ export interface NotaFiscal {
   numeroSequencial: number;
   status: StatusNota;
   itens: NotaFiscalItem[];
+  dataCriacao: string;
 }
 
 export interface CriarNotaPayload {
@@ -20,4 +21,12 @@ export interface CriarNotaPayload {
 
 export interface MensagemApi {
   message: string;
+  statusCode?: number;
+}
+
+export interface ApiResponse<T> {
+  statusCode: number;
+  message: string;
+  timestamp: string;
+  data: T;
 }

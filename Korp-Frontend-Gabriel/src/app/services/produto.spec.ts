@@ -34,6 +34,6 @@ describe('ProdutoService', () => {
 
     const req = httpMock.expectOne(`${environment.apiUrlEstoque}/produto`);
     expect(req.request.method).toBe('GET');
-    req.flush(mockProducts);
+    req.flush({ statusCode: 200, message: 'ok', timestamp: '2026-01-01', data: mockProducts });
   });
 });

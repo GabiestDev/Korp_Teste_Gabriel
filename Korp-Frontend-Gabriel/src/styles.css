@@ -148,8 +148,23 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  align-items: end;
+  align-items: flex-end;
   margin-bottom: 24px;
+}
+
+.toolbar-row .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.toolbar-row .form-actions {
+  margin: 0;
+  align-self: flex-end;
+}
+
+.toolbar-row .primary-btn,
+.toolbar-row .secondary-btn {
+  height: 56px;
+  min-height: 56px;
 }
 
 .field {

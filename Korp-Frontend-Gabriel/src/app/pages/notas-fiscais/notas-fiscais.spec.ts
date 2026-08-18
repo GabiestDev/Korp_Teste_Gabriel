@@ -1,10 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { NotaFiscalService } from '../../services/nota-fiscal';
 import { ProdutoService } from '../../services/produto';
 import { NotasFiscaisComponent } from './notas-fiscais';
+import { MensagemService } from '../../shared/mensagem.service';
 
 describe('NotasFiscaisComponent', () => {
   let component: NotasFiscaisComponent;
@@ -29,8 +29,8 @@ describe('NotasFiscaisComponent', () => {
           },
         },
         {
-          provide: MatSnackBar,
-          useValue: { open: () => {} },
+          provide: MensagemService,
+          useValue: { mostrarErro: () => {}, mostrarSucesso: () => {} },
         },
       ],
     }).compileComponents();

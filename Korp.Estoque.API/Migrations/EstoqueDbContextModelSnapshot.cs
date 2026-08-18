@@ -83,6 +83,9 @@ namespace Korp.Estoque.API.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Descricao")
                         .IsRequired()
                         .HasMaxLength(150)

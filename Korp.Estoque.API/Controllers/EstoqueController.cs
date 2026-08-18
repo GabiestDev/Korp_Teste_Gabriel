@@ -26,7 +26,7 @@ namespace Korp.Estoque.API.Controllers
                 .OrderBy(p => p.Id)
                 .ToListAsync();
 
-            return Ok(produtos);
+            return Ok(ApiResponse.Ok("Produtos listados com sucesso.", produtos));
         }
 
         [HttpPost("baixar")]
@@ -51,7 +51,7 @@ namespace Korp.Estoque.API.Controllers
                     }
                     else if (!string.IsNullOrEmpty(existing.RequestHash) && existing.RequestHash != requestHash)
                     {
-                        return Conflict(new { message = "Idempotency key reused with different payload." });
+                        return Conflict(ApiResponse.Error(409, "Idempotency key reused with different payload."));
                     }
                     else
                     {
@@ -69,7 +69,7 @@ namespace Korp.Estoque.API.Controllers
 
             if (produto == null)
             {
-                var notFound = new { message = "Produto não encontrado no estoque." };
+                var notFound = ApiResponse.Error(404, "Produto não encontrado no estoque.");
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
                     _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
@@ -90,7 +90,7 @@ namespace Korp.Estoque.API.Controllers
 
             if (produto.Saldo < dto.Quantidade)
             {
-                var bad = new { message = $"Saldo insuficiente. Saldo atual: {produto.Saldo}" };
+                var bad = ApiResponse.Error(400, $"Saldo insuficiente. Saldo atual: {produto.Saldo}");
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
                     _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
@@ -114,7 +114,7 @@ namespace Korp.Estoque.API.Controllers
             try
             {
                 await _context.SaveChangesAsync();
-                var ok = new { message = "Estoque atualizado com sucesso." };
+                var ok = ApiResponse.Ok("Estoque atualizado com sucesso.", produto);
 
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
@@ -135,7 +135,7 @@ namespace Korp.Estoque.API.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                var conflict = new { message = "Conflito de concorrência: O saldo deste produto foi atualizado por outra transação simultânea. Tente novamente." };
+                var conflict = ApiResponse.Error(409, "Conflito de concorrência: O saldo deste produto foi atualizado por outra transação simultânea. Tente novamente.");
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
                     _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
@@ -153,7 +153,7 @@ namespace Korp.Estoque.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro interno ao atualizar estoque do produto {ProdutoId}.", dto.ProdutoId);
-                var err = new { message = "Erro interno ao atualizar estoque." };
+                var err = ApiResponse.Error(500, "Erro interno ao atualizar estoque.");
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
                     _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
@@ -175,20 +175,21 @@ namespace Korp.Estoque.API.Controllers
         {
             var produto = new Produto
             {
-                Codigo = dto.Codigo,
-                Descricao = dto.Descricao,
-                Saldo = dto.Saldo
+                Codigo = dto.Codigo.Trim(),
+                Descricao = dto.Descricao.Trim(),
+                Saldo = dto.Saldo,
+                DataCriacao = DateTime.UtcNow
             };
 
             var produtoExistente = await _context.Produtos
-                .AnyAsync(p => p.Codigo == produto.Codigo);
+                .AnyAsync(p => p.Codigo.ToUpper() == produto.Codigo.ToUpper());
 
             if (produtoExistente)
-                return Conflict(new { message = $"Produto com código {produto.Codigo} já cadastrado." });
+                return Conflict(ApiResponse.Error(409, $"Produto com código {produto.Codigo} já cadastrado."));
 
             _context.Produtos.Add(produto);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(ListarProdutos), new { id = produto.Id }, produto);
+            return CreatedAtAction(nameof(ListarProdutos), new { id = produto.Id }, ApiResponse.Created("Produto cadastrado com sucesso.", produto));
         }
 
         [HttpPost("estornar")]
@@ -210,7 +211,7 @@ namespace Korp.Estoque.API.Controllers
                     }
                     else if (!string.IsNullOrEmpty(existing.RequestHash) && existing.RequestHash != requestHash)
                     {
-                        return Conflict(new { message = "Idempotency key reused with different payload." });
+                        return Conflict(ApiResponse.Error(409, "Idempotency key reused with different payload."));
                     }
                     else
                     {
@@ -228,7 +229,7 @@ namespace Korp.Estoque.API.Controllers
 
             if (produto == null)
             {
-                var notFound = new { message = "Produto não encontrado no estoque." };
+                var notFound = ApiResponse.Error(404, "Produto não encontrado no estoque.");
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
                     _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
@@ -251,7 +252,7 @@ namespace Korp.Estoque.API.Controllers
             try
             {
                 await _context.SaveChangesAsync();
-                var ok = new { message = "Estorno realizado com sucesso." };
+                var ok = ApiResponse.Ok("Estorno realizado com sucesso.", produto);
 
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
@@ -272,7 +273,7 @@ namespace Korp.Estoque.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro interno ao estornar estoque do produto {ProdutoId}.", dto.ProdutoId);
-                var err = new { message = "Erro interno ao estornar estoque." };
+                var err = ApiResponse.Error(500, "Erro interno ao estornar estoque.");
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
                     _context.IdempotencyEntries.Add(new Models.IdempotencyEntry

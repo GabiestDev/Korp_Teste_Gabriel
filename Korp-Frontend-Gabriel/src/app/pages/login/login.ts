@@ -19,16 +19,16 @@ export class LoginComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  email = '';
+  username = '';
   senha = '';
   mensagemErro = '';
 
   entrar(): void {
-    if (!this.email.trim() || !this.senha.trim()) {
-      this.mensagemErro = 'Informe e-mail e senha para entrar.';
+    if (!this.username.trim() || !this.senha.trim()) {
+      this.mensagemErro = 'Informe usuário e senha para entrar.';
       return;
     }
-    this.authService.login(this.email.trim(), this.senha);
+    this.authService.login(this.username.trim(), this.senha);
     this.router.navigate(['/notas-fiscais']);
   }
 }

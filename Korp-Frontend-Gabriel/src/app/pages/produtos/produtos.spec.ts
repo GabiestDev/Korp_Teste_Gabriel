@@ -1,9 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { ProdutoService } from '../../services/produto';
 import { ProdutosComponent } from './produtos';
+import { MensagemService } from '../../shared/mensagem.service';
 
 describe('ProdutosComponent', () => {
   let component: ProdutosComponent;
@@ -21,8 +21,8 @@ describe('ProdutosComponent', () => {
           },
         },
         {
-          provide: MatSnackBar,
-          useValue: { open: () => {} },
+          provide: MensagemService,
+          useValue: { mostrarErro: () => {}, mostrarSucesso: () => {} },
         },
       ],
     }).compileComponents();

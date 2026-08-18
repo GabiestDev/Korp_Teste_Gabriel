@@ -7,11 +7,11 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { switchMap } from 'rxjs';
 
 import { ProdutoService } from '../../services/produto';
 import { Produto } from '../../models/produto.model';
+import { MensagemService } from '../../shared/mensagem.service';
 
 @Component({
   selector: 'app-produtos',
@@ -31,11 +31,11 @@ import { Produto } from '../../models/produto.model';
 })
 export class ProdutosComponent implements AfterViewInit {
   private readonly produtoService = inject(ProdutoService);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly mensagemService = inject(MensagemService);
 
   produtos = signal<Produto[]>([]);
   dataSource = new MatTableDataSource<Produto>();
-  colunas: string[] = ['codigo', 'descricao', 'saldo'];
+  colunas: string[] = ['codigo', 'descricao', 'saldo', 'dataCriacao'];
 
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;
@@ -72,10 +72,7 @@ export class ProdutosComponent implements AfterViewInit {
     const descricao = this.novaDescricao.trim();
 
     if (!codigo || !descricao || this.novoSaldo < 0) {
-      this.snackBar.open('Preencha código, descrição e saldo válido antes de cadastrar.', 'Fechar', {
-        duration: 6000,
-        panelClass: ['erro-snackbar'],
-      });
+      this.mensagemService.mostrarErro('Preencha código, descrição e saldo válido antes de cadastrar.');
       return;
     }
 
@@ -92,7 +89,9 @@ export class ProdutosComponent implements AfterViewInit {
           this.novaDescricao = '';
           this.novoSaldo = 0;
           setTimeout(() => this.conectarDataSource());
+          this.mensagemService.mostrarSucesso('Produto cadastrado com sucesso.', 201);
         },
+        error: () => {},
       });
   }
 }

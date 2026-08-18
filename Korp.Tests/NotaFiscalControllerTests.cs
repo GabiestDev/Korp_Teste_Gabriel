@@ -57,7 +57,9 @@ namespace Korp.Tests
             var result = await controller.CriarNota(dto);
 
             var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
-            var nota = created.Value.Should().BeOfType<NotaFiscal>().Subject;
+            var envelope = created.Value.Should().BeOfType<ApiResponse<object>>().Subject;
+            envelope.StatusCode.Should().Be(201);
+            var nota = envelope.Data.Should().BeOfType<NotaFiscal>().Subject;
             nota.Status.Should().Be(StatusNota.Aberta);
             nota.Itens.Count.Should().Be(2);
             db.NotasFiscais.Count().Should().Be(1);
@@ -119,7 +121,7 @@ namespace Korp.Tests
 
             var result = await controller.ObterNota(999);
 
-            result.Should().BeOfType<NotFoundResult>();
+            result.Should().BeOfType<NotFoundObjectResult>();
         }
 
         [Fact]
@@ -137,9 +139,11 @@ namespace Korp.Tests
             var result = await controller.ListarTodas();
 
             var ok = result.Should().BeOfType<OkObjectResult>().Subject;
-            var notas = ok.Value.Should().BeAssignableTo<IEnumerable<NotaFiscal>>().Subject.ToList();
-            notas.Count.Should().Be(1);
-            notas[0].Itens.Count.Should().Be(1);
+            var envelope = ok.Value.Should().BeOfType<ApiResponse<List<NotaFiscal>>>().Subject;
+            envelope.StatusCode.Should().Be(200);
+            envelope.Data.Should().NotBeNull();
+            envelope.Data!.Count.Should().Be(1);
+            envelope.Data![0].Itens.Count.Should().Be(1);
         }
     }
 }

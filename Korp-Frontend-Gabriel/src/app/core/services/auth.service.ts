@@ -4,7 +4,7 @@ const TOKEN_KEY = 'korp_token';
 
 export interface Usuario {
   nome: string;
-  email: string;
+  username: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -13,9 +13,8 @@ export class AuthService {
 
   readonly autenticado = computed(() => this.token() !== null);
 
-  login(email: string, senha: string): void {
-    const nome = email.split('@')[0] || 'Usuario';
-    const payload: Usuario = { nome, email };
+  login(username: string, senha: string): void {
+    const payload: Usuario = { nome: username, username };
     const token = btoa(JSON.stringify(payload));
     localStorage.setItem(TOKEN_KEY, token);
     this.token.set(token);

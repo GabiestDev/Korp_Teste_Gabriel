@@ -14,5 +14,7 @@ namespace Korp.Faturamento.API.Models
         [Required]
         public StatusNota Status { get; set; } = StatusNota.Aberta; 
         public List<NotaFiscalItem> Itens { get; set; } = new();
+
+        public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
     }
 }

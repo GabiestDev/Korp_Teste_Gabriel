@@ -9,13 +9,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { finalize, switchMap } from 'rxjs';
 
 import { NotaFiscalService } from '../../services/nota-fiscal';
 import { ProdutoService } from '../../services/produto';
 import { NotaFiscal, NotaFiscalItem, StatusNota } from '../../models/nota-fiscal.model';
 import { Produto } from '../../models/produto.model';
+import { MensagemService } from '../../shared/mensagem.service';
 
 @Component({
   selector: 'app-notas-fiscais',
@@ -38,12 +38,12 @@ import { Produto } from '../../models/produto.model';
 export class NotasFiscaisComponent implements AfterViewInit {
   private readonly notaFiscalService = inject(NotaFiscalService);
   private readonly produtoService = inject(ProdutoService);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly mensagemService = inject(MensagemService);
 
   notas = signal<NotaFiscal[]>([]);
   dataSource = new MatTableDataSource<NotaFiscal>();
   produtosDisponiveis = signal<Produto[]>([]);
-  colunas: string[] = ['numeroSequencial', 'produtos', 'status', 'acoes'];
+  colunas: string[] = ['numeroSequencial', 'dataCriacao', 'produtos', 'status', 'acoes'];
 
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;
@@ -90,7 +90,12 @@ export class NotasFiscaisComponent implements AfterViewInit {
 
   adicionarItem(): void {
     if (!this.novoProdutoId || this.novaQuantidade <= 0) {
-      this.mostrarErro('Informe um produto válido e uma quantidade maior que zero.');
+      this.mensagemService.mostrarErro('Informe um produto válido e uma quantidade maior que zero.');
+      return;
+    }
+
+    if (this.itensAdicionados().some((item) => item.produtoId === this.novoProdutoId)) {
+      this.mensagemService.mostrarErro('Este produto já foi adicionado à nota atual.');
       return;
     }
 
@@ -104,7 +109,7 @@ export class NotasFiscaisComponent implements AfterViewInit {
 
   criarNota(): void {
     if (!this.itensAdicionados().length) {
-      this.mostrarErro('Adicione ao menos um item antes de criar a nota fiscal.');
+      this.mensagemService.mostrarErro('Adicione ao menos um item antes de criar a nota fiscal.');
       return;
     }
 
@@ -119,7 +124,9 @@ export class NotasFiscaisComponent implements AfterViewInit {
           this.notas.set(notas);
           this.dataSource.data = notas;
           setTimeout(() => this.conectarDataSource());
+          this.mensagemService.mostrarSucesso('Nota fiscal criada com sucesso.', 201);
         },
+        error: () => {},
       });
   }
 
@@ -137,6 +144,7 @@ export class NotasFiscaisComponent implements AfterViewInit {
           this.notas.set(notas);
           this.dataSource.data = notas;
           setTimeout(() => this.conectarDataSource());
+          this.mensagemService.mostrarSucesso('Nota fiscal impressa e fechada com sucesso!', 200);
         },
       });
   }
@@ -145,15 +153,7 @@ export class NotasFiscaisComponent implements AfterViewInit {
     return status === 1 ? 'Fechada' : 'Aberta';
   }
 
-  private mostrarErro(mensagem: string): void {
-    this.snackBar.open(mensagem, 'Fechar', {
-      duration: 6000,
-      panelClass: ['erro-snackbar'],
-    });
-  }
-
-  obterStatusColor(status: StatusNota): string {
-    return status === 1 ? 'green' : 'orange';
+  obterStatusColor(status: StatusNota): string {    return status === 1 ? 'green' : 'orange';
   }
 
   obterDescricaoProduto(produtoId: number): string {

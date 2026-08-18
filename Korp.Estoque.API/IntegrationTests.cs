@@ -21,19 +21,19 @@ public class IntegrationConcurrencyTests
         var created = await http.PostAsJsonAsync($"{EstoqueUrl}/api/estoque/produto", prod);
         created.EnsureSuccessStatusCode();
         var createdObj = await created.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        int produtoId = createdObj.GetProperty("id").GetInt32();
+        int produtoId = createdObj.GetProperty("data").GetProperty("id").GetInt32();
 
         // create two notas
         var notaPayload = new { Itens = new[] { new { ProdutoId = produtoId, Quantidade = 1 } } };
         var n1 = await http.PostAsJsonAsync($"{FaturamentoUrl}/api/NotaFiscal", notaPayload);
         n1.EnsureSuccessStatusCode();
         var n1Obj = await n1.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        int id1 = n1Obj.GetProperty("id").GetInt32();
+        int id1 = n1Obj.GetProperty("data").GetProperty("id").GetInt32();
 
         var n2 = await http.PostAsJsonAsync($"{FaturamentoUrl}/api/NotaFiscal", notaPayload);
         n2.EnsureSuccessStatusCode();
         var n2Obj = await n2.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        int id2 = n2Obj.GetProperty("id").GetInt32();
+        int id2 = n2Obj.GetProperty("data").GetProperty("id").GetInt32();
 
         // run prints concurrently
         var t1 = http.PostAsync($"{FaturamentoUrl}/api/NotaFiscal/{id1}/imprimir", null);
@@ -49,7 +49,8 @@ public class IntegrationConcurrencyTests
         successCount.Should().Be(1);
 
         // product saldo should be 0
-        var prods = await http.GetFromJsonAsync<System.Text.Json.JsonElement[]>($"{EstoqueUrl}/api/estoque/produto");
+        var prodsResp = await http.GetFromJsonAsync<System.Text.Json.JsonElement>($"{EstoqueUrl}/api/estoque/produto");
+        var prods = prodsResp.GetProperty("data").EnumerateArray();
         int finalSaldo = -1;
         foreach (var p in prods)
         {

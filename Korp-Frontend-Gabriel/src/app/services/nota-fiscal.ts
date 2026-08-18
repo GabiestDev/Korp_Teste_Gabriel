@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { CriarNotaPayload, NotaFiscal } from '../models/nota-fiscal.model';
+import { ApiResponse, CriarNotaPayload, NotaFiscal } from '../models/nota-fiscal.model';
 
 @Injectable({
   providedIn: 'root',
@@ -13,14 +13,20 @@ export class NotaFiscalService {
   private readonly baseUrl = environment.apiUrlFaturamento;
 
   listarNotas(): Observable<NotaFiscal[]> {
-    return this.http.get<NotaFiscal[]>(this.baseUrl);
+    return this.http
+      .get<ApiResponse<NotaFiscal[]>>(this.baseUrl)
+      .pipe(map((r) => r.data));
   }
 
   criarNota(nota: CriarNotaPayload): Observable<NotaFiscal> {
-    return this.http.post<NotaFiscal>(this.baseUrl, nota);
+    return this.http
+      .post<ApiResponse<NotaFiscal>>(this.baseUrl, nota)
+      .pipe(map((r) => r.data));
   }
 
   imprimirNota(id: number): Observable<NotaFiscal> {
-    return this.http.post<NotaFiscal>(`${this.baseUrl}/${id}/imprimir`, {});
+    return this.http
+      .post<ApiResponse<NotaFiscal>>(`${this.baseUrl}/${id}/imprimir`, {})
+      .pipe(map((r) => r.data));
   }
 }

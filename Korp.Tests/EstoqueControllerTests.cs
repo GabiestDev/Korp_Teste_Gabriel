@@ -43,7 +43,9 @@ namespace Korp.Tests
             var result = await controller.CadastrarProduto(dto);
 
             var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
-            created.Value.Should().BeOfType<Korp.Estoque.API.Models.Produto>();
+            var envelope = created.Value.Should().BeOfType<ApiResponse<object>>().Subject;
+            envelope.StatusCode.Should().Be(201);
+            envelope.Data.Should().BeOfType<Korp.Estoque.API.Models.Produto>();
             db.Produtos.Count().Should().Be(1);
         }
 
