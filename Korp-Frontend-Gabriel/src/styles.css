@@ -1,1 +1,342 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global styles - Korp brand */
+:root {
+  --korp-blue-dark: #2b485a;
+  --korp-blue-deep: #114b78;
+  --korp-blue: #2b485a;
+  --korp-blue-light: #8cb2ca;
+  --korp-blue-lighter: #b5d5e5;
+  --korp-red: #ff0c46;
+  --korp-gray: #f4f4f4;
+  --korp-text: #22303c;
+  --korp-text-muted: #6b7c8c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select,
+.mat-mdc-button,
+.mat-mdc-form-field {
+  font: inherit;
+}
+
+/* Layout */
+.app-layout {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.topbar {
+  max-width: 1280px;
+  margin: 0 auto 22px;
+  padding: 16px 22px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--korp-blue-dark) 0%, var(--korp-blue-deep) 100%);
+  box-shadow: 0 12px 28px rgba(17, 75, 120, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #fff;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--korp-red);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 12px rgba(255, 12, 70, 0.35);
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2vw, 2.1rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.brand-user {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-left: 8px;
+}
+
+.nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nav a {
+  border-radius: 10px;
+  color: #e9f2f8 !important;
+  font-weight: 700;
+  padding: 8px 14px !important;
+}
+
+.nav a:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.nav a.active-link {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+}
+
+.content-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* Footer */
+.site-footer {
+  margin: 24px 0 8px;
+  text-align: center;
+  color: var(--korp-text-muted);
+}
+
+.site-footer small {
+  color: var(--korp-text-muted);
+  font-weight: 600;
+}
+
+.site-footer a {
+  color: var(--korp-red);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Cards */
+.page-card {
+  background: #ffffff;
+  border: 1px solid #e3ebf1;
+  border-radius: 16px;
+  padding: 26px;
+  box-shadow: 0 8px 24px rgba(17, 75, 120, 0.07);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2vw, 1.8rem);
+  color: var(--korp-blue-dark);
+}
+
+.toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.field {
+  min-width: 180px;
+}
+
+.field-wide {
+  min-width: 260px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  margin-bottom: 18px;
+}
+
+/* Material form fields */
+mat-form-field,
+.mat-form-field,
+.mat-mdc-form-field {
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #dfe8ef;
+}
+
+mat-form-field:focus-within,
+.mat-form-field:focus-within,
+.mat-mdc-form-field:focus-within {
+  border-color: var(--korp-blue-light);
+  box-shadow: 0 0 0 3px rgba(140, 178, 202, 0.25);
+}
+
+/* Buttons */
+.primary-btn,
+.secondary-btn,
+.print-btn {
+  min-height: 46px;
+  border-radius: 10px !important;
+  background: var(--korp-blue-dark) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease !important;
+}
+
+.primary-btn:hover,
+.secondary-btn:hover,
+.print-btn:hover {
+  background: var(--korp-blue-deep) !important;
+  box-shadow: 0 4px 14px rgba(17, 75, 120, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+.primary-btn:active,
+.secondary-btn:active,
+.print-btn:active {
+  transform: translateY(0);
+}
+
+.primary-btn:disabled,
+.print-btn:disabled {
+  background: #b9c6d0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.info-box {
+  padding: 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f0f6fa 0%, #e6eff5 100%);
+  border: 1px solid var(--korp-blue-lighter);
+}
+
+.info-box strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--korp-blue-dark);
+}
+
+/* Tables */
+.table-wrap {
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid #e3ebf1;
+  background: #ffffff;
+}
+
+.table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+}
+
+.table-wrap th,
+.table-wrap td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #edf2f6;
+}
+
+.table-wrap th,
+.table-wrap .mat-mdc-header-cell {
+  color: var(--korp-blue-dark);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #f0f5f9 !important;
+}
+
+.table-wrap tbody tr:hover {
+  background: #f7fafc;
+}
+
+.table-wrap tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.empty-state {
+  margin: 0;
+  padding: 20px;
+  color: var(--korp-text-muted);
+  border: 1px dashed #c7d5df;
+  border-radius: 12px;
+  background: #f7fafc;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 90px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--korp-blue-lighter);
+  color: var(--korp-blue-deep);
+}
+
+.status-badge.closed {
+  background: #e2e8ec;
+  color: var(--korp-text-muted);
+}
+
+/* Item tags */
+.item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.item-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #eef6fa;
+  border: 1px solid var(--korp-blue-lighter);
+  color: var(--korp-blue-deep);
+  font-weight: 700;
+}
+
+.erro-snackbar {
+  --mdc-snackbar-container-color: #114b78;
+  --mdc-snackbar-supporting-text-color: #ffffff;
+  --mat-snack-bar-button-color: #ff0c46;
+}
+
+@media (max-width: 780px) {
+  .app-layout {
+    padding: 14px;
+  }
+
+  .topbar,
+  .page-header,
+  .toolbar-row {
+    display: block;
+  }
+
+  .nav {
+    margin-top: 12px;
+  }
+
+  .page-card {
+    padding: 18px;
+  }
+}
