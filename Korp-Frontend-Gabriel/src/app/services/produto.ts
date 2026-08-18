@@ -1,20 +1,22 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-const API_URL = 'http://localhost:5090/api/Estoque';
+import { environment } from '../../environments/environment';
+import { CriarProdutoPayload, Produto } from '../models/produto.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ProdutoService {
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = environment.apiUrlEstoque;
 
-  listar(): Observable<any> {
-    return this.http.get(`${API_URL}/produto`);
+  listar(): Observable<Produto[]> {
+    return this.http.get<Produto[]>(`${this.baseUrl}/produto`);
   }
 
-  criar(produto: any): Observable<any> {
-    return this.http.post(`${API_URL}/produto`, produto);
+  criar(produto: CriarProdutoPayload): Observable<Produto> {
+    return this.http.post<Produto>(`${this.baseUrl}/produto`, produto);
   }
 }

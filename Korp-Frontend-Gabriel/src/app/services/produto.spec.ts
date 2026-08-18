@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 
 import { ProdutoService } from './produto';
+import { environment } from '../../environments/environment';
 
 describe('ProdutoService', () => {
   let service: ProdutoService;
@@ -9,7 +11,7 @@ describe('ProdutoService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     service = TestBed.inject(ProdutoService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -30,7 +32,7 @@ describe('ProdutoService', () => {
       expect(products).toEqual(mockProducts);
     });
 
-    const req = httpMock.expectOne('http://localhost:5164/api/Estoque/produto');
+    const req = httpMock.expectOne(`${environment.apiUrlEstoque}/produto`);
     expect(req.request.method).toBe('GET');
     req.flush(mockProducts);
   });

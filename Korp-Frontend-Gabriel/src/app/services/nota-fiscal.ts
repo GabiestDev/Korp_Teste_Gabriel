@@ -1,37 +1,34 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, catchError, finalize, throwError } from 'rxjs';
+import { Observable, finalize } from 'rxjs';
 
-const API_URL = 'http://localhost:5164/api/NotaFiscal';
+import { environment } from '../../environments/environment';
+import { CriarNotaPayload, NotaFiscal } from '../models/nota-fiscal.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NotaFiscalService {
-  private isPrintingSubject = new BehaviorSubject<boolean>(false);
-  public isPrinting$ = this.isPrintingSubject.asObservable();
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = environment.apiUrlFaturamento;
 
-  constructor(private http: HttpClient) { }
+  readonly isPrinting = signal(false);
 
-  listarNotas(): Observable<any> {
-    return this.http.get(`${API_URL}`);
+  listarNotas(): Observable<NotaFiscal[]> {
+    return this.http.get<NotaFiscal[]>(this.baseUrl);
   }
 
-  criarNota(nota: any): Observable<any> {
-    return this.http.post(`${API_URL}`, nota);
+  criarNota(nota: CriarNotaPayload): Observable<NotaFiscal> {
+    return this.http.post<NotaFiscal>(this.baseUrl, nota);
   }
 
-  imprimirNota(id: number): Observable<any> {
-    this.isPrintingSubject.next(true); 
+  imprimirNota(id: number): Observable<NotaFiscal> {
+    this.isPrinting.set(true);
 
-    return this.http.post(`${API_URL}/${id}/imprimir`, {}).pipe(
-      catchError(error => {
-        console.error('Erro na impressão:', error);
-        return throwError(() => error);
-      }),
+    return this.http.post<NotaFiscal>(`${this.baseUrl}/${id}/imprimir`, {}).pipe(
       finalize(() => {
-        this.isPrintingSubject.next(false);
-      })
+        this.isPrinting.set(false);
+      }),
     );
   }
 }

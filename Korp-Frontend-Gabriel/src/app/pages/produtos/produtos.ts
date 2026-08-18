@@ -1,11 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { switchMap } from 'rxjs';
+
 import { ProdutoService } from '../../services/produto';
+import { Produto } from '../../models/produto.model';
 
 @Component({
   selector: 'app-produtos',
@@ -13,28 +16,27 @@ import { ProdutoService } from '../../services/produto';
   imports: [CommonModule, FormsModule, MatTableModule, MatButtonModule, MatInputModule, MatFormFieldModule],
   templateUrl: './produtos.html',
 })
-export class ProdutosComponent implements OnInit {
-  produtos: any[] = [];
+export class ProdutosComponent {
+  private readonly produtoService = inject(ProdutoService);
+
+  produtos = signal<Produto[]>([]);
   colunas: string[] = ['codigo', 'descricao', 'saldo'];
 
   novoCodigo = '';
   novaDescricao = '';
   novoSaldo = 0;
 
-  constructor(private produtoService: ProdutoService) {}
-
-  ngOnInit() {
+  constructor() {
     this.carregarProdutos();
   }
 
-  carregarProdutos() {
+  carregarProdutos(): void {
     this.produtoService.listar().subscribe({
-      next: (res: any) => (this.produtos = res),
-      error: (err: any) => console.error('Erro ao buscar produtos:', err),
+      next: (produtos) => this.produtos.set(produtos),
     });
   }
 
-  criarProduto() {
+  criarProduto(): void {
     const codigo = this.novoCodigo.trim();
     const descricao = this.novaDescricao.trim();
 
@@ -45,17 +47,16 @@ export class ProdutosComponent implements OnInit {
 
     const produto = { codigo, descricao, saldo: Number(this.novoSaldo) };
 
-    this.produtoService.criar(produto).subscribe({
-      next: () => {
-        this.carregarProdutos();
-        this.novoCodigo = '';
-        this.novaDescricao = '';
-        this.novoSaldo = 0;
-      },
-      error: (err: any) => {
-        console.error('Erro ao criar produto:', err);
-        alert(err?.error?.message ?? 'Erro ao cadastrar produto.');
-      },
-    });
+    this.produtoService
+      .criar(produto)
+      .pipe(switchMap(() => this.produtoService.listar()))
+      .subscribe({
+        next: (produtos) => {
+          this.produtos.set(produtos);
+          this.novoCodigo = '';
+          this.novaDescricao = '';
+          this.novoSaldo = 0;
+        },
+      });
   }
 }

@@ -1,0 +1,27 @@
+<section class="page-card login-card">
+  <div class="page-header">
+    <h2>Acesso ao Sistema</h2>
+  </div>
+
+  @if (mensagemErro) {
+    <p class="login-error" role="alert">{{ mensagemErro }}</p>
+  }
+
+  <div class="login-form">
+    <mat-form-field appearance="outline" class="field-wide">
+      <mat-label>E-mail</mat-label>
+      <input matInput type="email" [(ngModel)]="email" (keydown.enter)="entrar()">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="field-wide">
+      <mat-label>Senha</mat-label>
+      <input matInput type="password" [(ngModel)]="senha" (keydown.enter)="entrar()">
+    </mat-form-field>
+
+    <div class="form-actions">
+      <button mat-flat-button class="primary-btn" (click)="entrar()">Entrar</button>
+    </div>
+
+    <p class="login-hint">Acesso simulado: use qualquer e-mail e senha para entrar.</p>
+  </div>
+</section>

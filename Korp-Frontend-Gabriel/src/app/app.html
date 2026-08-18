@@ -2,11 +2,17 @@
   <header class="topbar">
     <div class="brand">
       <h1>Sistema Korp</h1>
+      @if (autenticado) {
+        <span class="brand-user">Olá, {{ usuarioNome }}</span>
+      }
     </div>
 
     <nav class="nav" aria-label="Navegação principal">
-      <a mat-button routerLink="/notas-fiscais" routerLinkActive="active-link">Notas Fiscais</a>
-      <a mat-button routerLink="/produtos" routerLinkActive="active-link">Produtos</a>
+      @if (autenticado) {
+        <a mat-button routerLink="/notas-fiscais" routerLinkActive="active-link">Notas Fiscais</a>
+        <a mat-button routerLink="/produtos" routerLinkActive="active-link">Produtos</a>
+        <a mat-button (click)="sair()">Sair</a>
+      }
     </nav>
   </header>
 

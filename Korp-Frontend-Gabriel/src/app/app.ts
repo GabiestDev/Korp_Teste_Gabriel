@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { RouterOutlet, RouterLink, Router } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
+import { AuthService } from './core/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -11,5 +12,21 @@ import { MatButtonModule } from '@angular/material/button';
   styleUrl: './app.css'
 })
 export class AppComponent {
-  title = 'Korp-Frontend-Gabriel';
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  title = 'Sistema Korp';
+
+  get autenticado(): boolean {
+    return this.authService.autenticado();
+  }
+
+  get usuarioNome(): string {
+    return this.authService.usuario()?.nome ?? '';
+  }
+
+  sair(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
 }

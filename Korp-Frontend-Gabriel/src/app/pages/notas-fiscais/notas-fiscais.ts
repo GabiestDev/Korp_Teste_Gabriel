@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
@@ -7,8 +7,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { finalize, switchMap } from 'rxjs';
+
 import { NotaFiscalService } from '../../services/nota-fiscal';
 import { ProdutoService } from '../../services/produto';
+import { NotaFiscal, NotaFiscalItem, StatusNota } from '../../models/nota-fiscal.model';
+import { Produto } from '../../models/produto.model';
 
 @Component({
   selector: 'app-notas-fiscais',
@@ -25,106 +29,108 @@ import { ProdutoService } from '../../services/produto';
   ],
   templateUrl: './notas-fiscais.html',
 })
-export class NotasFiscaisComponent implements OnInit {
-  notas: any[] = [];
-  produtosDisponiveis: any[] = [];
+export class NotasFiscaisComponent {
+  private readonly notaFiscalService = inject(NotaFiscalService);
+  private readonly produtoService = inject(ProdutoService);
+
+  notas = signal<NotaFiscal[]>([]);
+  produtosDisponiveis = signal<Produto[]>([]);
   colunas: string[] = ['numeroSequencial', 'produtos', 'status', 'acoes'];
 
   novoProdutoId = 0;
   novaQuantidade = 1;
-  itensAdicionados: Array<{ produtoId: number; quantidade: number }> = [];
-  imprimindoId: number | null = null;
+  itensAdicionados = signal<Array<{ produtoId: number; quantidade: number }>>([]);
+  imprimindoId = signal<number | null>(null);
 
-  constructor(
-    private notaFiscalService: NotaFiscalService,
-    private produtoService: ProdutoService,
-  ) {}
-
-  ngOnInit() {
+  constructor() {
     this.carregarNotas();
     this.carregarProdutos();
   }
 
-  carregarProdutos() {
+  carregarProdutos(): void {
     this.produtoService.listar().subscribe({
-      next: (res: any[]) => {
-        this.produtosDisponiveis = res;
-        if (res.length && !this.novoProdutoId) {
-          this.novoProdutoId = Number(res[0].id ?? res[0].produtoId ?? 1);
+      next: (produtos) => {
+        this.produtosDisponiveis.set(produtos);
+        if (produtos.length && !this.novoProdutoId) {
+          this.novoProdutoId = produtos[0].id;
         }
       },
-      error: (err: any) => console.error('Erro ao buscar produtos:', err),
     });
   }
 
-  carregarNotas() {
-    this.notaFiscalService.listarNotas().subscribe((res: any) => (this.notas = res));
+  carregarNotas(): void {
+    this.notaFiscalService.listarNotas().subscribe({
+      next: (notas) => this.notas.set(notas),
+    });
   }
 
-  adicionarItem() {
+  adicionarItem(): void {
     if (!this.novoProdutoId || this.novaQuantidade <= 0) {
       alert('Informe um produto válido e uma quantidade maior que zero.');
       return;
     }
 
-    this.itensAdicionados.push({
-      produtoId: Number(this.novoProdutoId),
-      quantidade: Number(this.novaQuantidade),
-    });
+    this.itensAdicionados.update((itens) => [
+      ...itens,
+      { produtoId: this.novoProdutoId, quantidade: this.novaQuantidade },
+    ]);
 
     this.novaQuantidade = 1;
   }
 
-  criarNota() {
-    if (!this.itensAdicionados.length) {
+  criarNota(): void {
+    if (!this.itensAdicionados().length) {
       alert('Adicione ao menos um item antes de criar a nota fiscal.');
       return;
     }
 
-    const novaNota = { itens: this.itensAdicionados };
+    const novaNota = { itens: this.itensAdicionados() };
 
-    this.notaFiscalService.criarNota(novaNota).subscribe({
-      next: () => {
-        this.itensAdicionados = [];
-        this.carregarNotas();
-      },
-      error: (err: any) => {
-        console.error('Erro ao criar nota:', err);
-        alert(err?.error?.message ?? 'Erro ao criar nota fiscal.');
-      },
-    });
+    this.notaFiscalService
+      .criarNota(novaNota)
+      .pipe(switchMap(() => this.notaFiscalService.listarNotas()))
+      .subscribe({
+        next: (notas) => {
+          this.itensAdicionados.set([]);
+          this.notas.set(notas);
+        },
+      });
   }
 
-  imprimir(id: number) {
-    this.imprimindoId = id;
+  imprimir(id: number): void {
+    this.imprimindoId.set(id);
 
-    this.notaFiscalService.imprimirNota(id).subscribe({
-      next: () => {
-        this.imprimindoId = null;
-        this.carregarNotas();
-      },
-      error: (err: any) => {
-        this.imprimindoId = null;
-        console.error('Erro na API:', err);
-        alert(err?.error?.message ?? 'Erro ao imprimir a nota fiscal.');
-      },
-    });
+    this.notaFiscalService
+      .imprimirNota(id)
+      .pipe(
+        switchMap(() => this.notaFiscalService.listarNotas()),
+        finalize(() => this.imprimindoId.set(null)),
+      )
+      .subscribe({
+        next: (notas) => this.notas.set(notas),
+      });
   }
 
-  obterStatusTexto(status: number | string): string {
-    return status === 1 || status === 'Fechada' ? 'Fechada' : 'Aberta';
+  obterStatusTexto(status: StatusNota): string {
+    return status === 1 ? 'Fechada' : 'Aberta';
   }
 
-  obterStatusColor(status: number | string): string {
-    return status === 1 || status === 'Fechada' ? 'green' : 'orange';
+  obterStatusColor(status: StatusNota): string {
+    return status === 1 ? 'green' : 'orange';
   }
 
   obterDescricaoProduto(produtoId: number): string {
-    const produto = this.produtosDisponiveis.find((item) => Number(item.id) === Number(produtoId));
+    const produto = this.produtosDisponiveis().find((item) => item.id === produtoId);
     if (produto) {
       return `${produto.descricao} (${produto.codigo})`;
     }
 
     return `Produto ${produtoId}`;
+  }
+
+  obterProdutosDaNota(itens: NotaFiscalItem[]): string {
+    return itens
+      .map((item) => `${this.obterDescricaoProduto(item.produtoId)} x${item.quantidade}`)
+      .join(', ');
   }
 }

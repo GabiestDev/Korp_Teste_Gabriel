@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 
 import { NotaFiscalService } from './nota-fiscal';
+import { environment } from '../../environments/environment';
 
 describe('NotaFiscalService', () => {
   let service: NotaFiscalService;
@@ -9,7 +11,7 @@ describe('NotaFiscalService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     service = TestBed.inject(NotaFiscalService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -30,8 +32,24 @@ describe('NotaFiscalService', () => {
       expect(response).toEqual({ id: 1, status: 'Aberta' });
     });
 
-    const req = httpMock.expectOne('http://localhost:5164/api/NotaFiscal');
+    const req = httpMock.expectOne(`${environment.apiUrlFaturamento}`);
     expect(req.request.method).toBe('POST');
     req.flush({ id: 1, status: 'Aberta' });
+  });
+
+  it('should toggle isPrinting signal while printing', () => {
+    const id = 1;
+
+    expect(service.isPrinting()).toBe(false);
+
+    service.imprimirNota(id).subscribe();
+
+    expect(service.isPrinting()).toBe(true);
+
+    const req = httpMock.expectOne(`${environment.apiUrlFaturamento}/${id}/imprimir`);
+    expect(req.request.method).toBe('POST');
+    req.flush({ id: 1, status: 'Aberta' });
+
+    expect(service.isPrinting()).toBe(false);
   });
 });
