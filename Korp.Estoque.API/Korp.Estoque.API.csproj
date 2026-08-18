@@ -16,4 +16,10 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
+<!-- Excluir fontes de teste/integration do artefato de publish -->
+<ItemGroup>
+  <Compile Remove="IntegrationTests.cs" />
+  <None Remove="IntegrationTests.cs" />
+</ItemGroup>
+
 </Project>
