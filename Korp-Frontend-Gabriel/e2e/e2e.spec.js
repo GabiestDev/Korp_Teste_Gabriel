@@ -69,7 +69,10 @@ test('07 - Frontend /produtos: cadastrar novo produto pela UI', async ({ page })
   await page.getByRole('button', { name: 'Cadastrar Produto' }).click();
   await expect(page.getByText('Produto cadastrado com sucesso.')).toBeVisible();
   await page.getByRole('button', { name: 'OK' }).click();
-  await page.getByLabel('Last page').click();
+  const lastPage = page.getByLabel('Last page');
+  if (await lastPage.isEnabled()) {
+    await lastPage.click();
+  }
   await expect(page.getByRole('cell', { name: CODIGO_UI })).toBeVisible();
 });
 
