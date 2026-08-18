@@ -56,10 +56,13 @@
         <ng-container matColumnDef="produtos">
           <th mat-header-cell *matHeaderCellDef> Produtos </th>
           <td mat-cell *matCellDef="let n">
-            <span *ngIf="n.itens?.length; else semItens">
-              {{ obterProdutosDaNota(n.itens) }}
-            </span>
-            <ng-template #semItens>-</ng-template>
+            @if (n.itens?.length) {
+              <span>
+                {{ obterProdutosDaNota(n.itens) }}
+              </span>
+            } @else {
+              <span>-</span>
+            }
           </td>
         </ng-container>
 
@@ -82,8 +85,11 @@
               [disabled]="imprimindoId() === n.id || obterStatusTexto(n.status) === 'Fechada'"
               style="background: linear-gradient(135deg, #2b485a 0%, #203739 100%) !important; color: #fff !important; border: none !important;"
             >
-              <span *ngIf="imprimindoId() !== n.id">Imprimir</span>
-              <mat-spinner *ngIf="imprimindoId() === n.id" diameter="20"></mat-spinner>
+              @if (imprimindoId() !== n.id) {
+                <span>Imprimir</span>
+              } @else {
+                <mat-spinner diameter="20"></mat-spinner>
+              }
             </button>
           </td>
         </ng-container>
