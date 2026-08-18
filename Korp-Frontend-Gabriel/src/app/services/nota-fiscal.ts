@@ -1,6 +1,6 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, finalize } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { CriarNotaPayload, NotaFiscal } from '../models/nota-fiscal.model';
@@ -12,8 +12,6 @@ export class NotaFiscalService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiUrlFaturamento;
 
-  readonly isPrinting = signal(false);
-
   listarNotas(): Observable<NotaFiscal[]> {
     return this.http.get<NotaFiscal[]>(this.baseUrl);
   }
@@ -23,12 +21,6 @@ export class NotaFiscalService {
   }
 
   imprimirNota(id: number): Observable<NotaFiscal> {
-    this.isPrinting.set(true);
-
-    return this.http.post<NotaFiscal>(`${this.baseUrl}/${id}/imprimir`, {}).pipe(
-      finalize(() => {
-        this.isPrinting.set(false);
-      }),
-    );
+    return this.http.post<NotaFiscal>(`${this.baseUrl}/${id}/imprimir`, {});
   }
 }

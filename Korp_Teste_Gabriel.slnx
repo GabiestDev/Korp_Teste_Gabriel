@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="Korp.Estoque.API/Korp.Estoque.API.csproj" Id="f0bbd0eb-ff95-47b5-8520-a3c8b225270b" />
   <Project Path="Korp.Faturamento.API/Korp.Faturamento.API.csproj" />
+  <Project Path="Korp.Tests/Korp.Tests.csproj" />
 </Solution>

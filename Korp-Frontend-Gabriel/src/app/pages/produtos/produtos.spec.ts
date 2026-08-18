@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { ProdutoService } from '../../services/produto';
 import { ProdutosComponent } from './produtos';
@@ -18,6 +19,10 @@ describe('ProdutosComponent', () => {
             listar: () => of([]),
             criar: () => of({}),
           },
+        },
+        {
+          provide: MatSnackBar,
+          useValue: { open: () => {} },
         },
       ],
     }).compileComponents();

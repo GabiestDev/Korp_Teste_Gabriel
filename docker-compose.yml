@@ -2,13 +2,19 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   estoque:
     build:
@@ -16,12 +22,19 @@ services:
       dockerfile: Korp.Estoque.API/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__EstoqueDb=Host=db;Port=5432;Database=EstoqueDB;Username=postgres;Password=postgres
+      - ConnectionStrings__EstoqueDb=Host=db;Port=5432;Database=EstoqueDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       - ASPNETCORE_URLS=http://+:5090
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "5090:5090"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/5090'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   faturamento:
     build:
@@ -29,14 +42,22 @@ services:
       dockerfile: Korp.Faturamento.API/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__FaturamentoDb=Host=db;Port=5432;Database=FaturamentoDB;Username=postgres;Password=postgres
+      - ConnectionStrings__FaturamentoDb=Host=db;Port=5432;Database=FaturamentoDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       - EstoqueService__BaseUrl=http://estoque:5090
       - ASPNETCORE_URLS=http://+:5164
     depends_on:
-      - db
-      - estoque
+      db:
+        condition: service_healthy
+      estoque:
+        condition: service_started
     ports:
       - "5164:5164"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/5164'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build:
@@ -45,7 +66,9 @@ services:
     ports:
       - "4200:80"
     depends_on:
-      - faturamento
+      faturamento:
+        condition: service_started
+    restart: unless-stopped
 
 volumes:
   db-data:

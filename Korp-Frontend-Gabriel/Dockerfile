@@ -2,7 +2,8 @@ FROM node:20 AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --silent --no-audit --no-fund
+RUN npm install -g npm@11.6.2 --silent --no-audit --no-fund
+RUN --mount=type=cache,target=/root/.npm npm ci --silent --no-audit --no-fund
 
 COPY . .
 RUN npm run build -- --configuration production

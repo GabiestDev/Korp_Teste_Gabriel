@@ -27,7 +27,17 @@ try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<EstoqueDbContext>();
-    db.Database.EnsureCreated();
+    try
+    {
+        db.Database.Migrate();
+    }
+    catch (Exception migrateEx)
+    {
+        // Legacy database created with EnsureCreated has no migration history.
+        // Fall back to ensuring the schema exists so the service keeps working.
+        app.Logger.LogWarning(migrateEx, "Não foi possível aplicar migrations; verificando schema existente.");
+        db.Database.EnsureCreated();
+    }
 }
 catch (Exception ex)
 {
@@ -39,12 +49,31 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapGet("/health", () => Results.Ok(new
+app.MapGet("/health", async () =>
 {
-    service = "Estoque",
-    status = "degraded",
-    message = "Banco PostgreSQL indisponível. O serviço continua em modo degradado e os endpoints podem responder com erro apropriado."
-}));
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<EstoqueDbContext>();
+        await db.Database.CanConnectAsync();
+        return Results.Ok(new
+        {
+            service = "Estoque",
+            status = "ok",
+            message = "Serviço saudável."
+        });
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Health check do Estoque detectou indisponibilidade do banco.");
+        return Results.Ok(new
+        {
+            service = "Estoque",
+            status = "degraded",
+            message = "Banco PostgreSQL indisponível. O serviço continua em modo degradado e os endpoints podem responder com erro apropriado."
+        });
+    }
+});
 
 app.UseCors("AllowAngular");
 app.UseHttpsRedirection();

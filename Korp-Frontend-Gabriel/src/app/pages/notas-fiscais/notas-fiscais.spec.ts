@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { NotaFiscalService } from '../../services/nota-fiscal';
 import { ProdutoService } from '../../services/produto';
@@ -26,6 +27,10 @@ describe('NotasFiscaisComponent', () => {
           useValue: {
             listar: () => of([]),
           },
+        },
+        {
+          provide: MatSnackBar,
+          useValue: { open: () => {} },
         },
       ],
     }).compileComponents();

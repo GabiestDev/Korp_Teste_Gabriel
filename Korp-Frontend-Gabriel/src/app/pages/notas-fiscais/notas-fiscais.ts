@@ -1,12 +1,15 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, ChangeDetectionStrategy, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { finalize, switchMap } from 'rxjs';
 
 import { NotaFiscalService } from '../../services/nota-fiscal';
@@ -22,6 +25,8 @@ import { Produto } from '../../models/produto.model';
     CommonModule,
     FormsModule,
     MatTableModule,
+    MatPaginatorModule,
+    MatSortModule,
     MatButtonModule,
     MatProgressSpinnerModule,
     MatFormFieldModule,
@@ -30,13 +35,18 @@ import { Produto } from '../../models/produto.model';
   ],
   templateUrl: './notas-fiscais.html',
 })
-export class NotasFiscaisComponent {
+export class NotasFiscaisComponent implements AfterViewInit {
   private readonly notaFiscalService = inject(NotaFiscalService);
   private readonly produtoService = inject(ProdutoService);
+  private readonly snackBar = inject(MatSnackBar);
 
   notas = signal<NotaFiscal[]>([]);
+  dataSource = new MatTableDataSource<NotaFiscal>();
   produtosDisponiveis = signal<Produto[]>([]);
   colunas: string[] = ['numeroSequencial', 'produtos', 'status', 'acoes'];
+
+  @ViewChild(MatSort) sort?: MatSort;
+  @ViewChild(MatPaginator) paginator?: MatPaginator;
 
   novoProdutoId = 0;
   novaQuantidade = 1;
@@ -46,6 +56,15 @@ export class NotasFiscaisComponent {
   constructor() {
     this.carregarNotas();
     this.carregarProdutos();
+  }
+
+  ngAfterViewInit(): void {
+    this.conectarDataSource();
+  }
+
+  private conectarDataSource(): void {
+    this.dataSource.sort = this.sort ?? null;
+    this.dataSource.paginator = this.paginator ?? null;
   }
 
   carregarProdutos(): void {
@@ -61,13 +80,17 @@ export class NotasFiscaisComponent {
 
   carregarNotas(): void {
     this.notaFiscalService.listarNotas().subscribe({
-      next: (notas) => this.notas.set(notas),
+      next: (notas) => {
+        this.notas.set(notas);
+        this.dataSource.data = notas;
+        setTimeout(() => this.conectarDataSource());
+      },
     });
   }
 
   adicionarItem(): void {
     if (!this.novoProdutoId || this.novaQuantidade <= 0) {
-      alert('Informe um produto válido e uma quantidade maior que zero.');
+      this.mostrarErro('Informe um produto válido e uma quantidade maior que zero.');
       return;
     }
 
@@ -81,7 +104,7 @@ export class NotasFiscaisComponent {
 
   criarNota(): void {
     if (!this.itensAdicionados().length) {
-      alert('Adicione ao menos um item antes de criar a nota fiscal.');
+      this.mostrarErro('Adicione ao menos um item antes de criar a nota fiscal.');
       return;
     }
 
@@ -94,6 +117,8 @@ export class NotasFiscaisComponent {
         next: (notas) => {
           this.itensAdicionados.set([]);
           this.notas.set(notas);
+          this.dataSource.data = notas;
+          setTimeout(() => this.conectarDataSource());
         },
       });
   }
@@ -108,12 +133,23 @@ export class NotasFiscaisComponent {
         finalize(() => this.imprimindoId.set(null)),
       )
       .subscribe({
-        next: (notas) => this.notas.set(notas),
+        next: (notas) => {
+          this.notas.set(notas);
+          this.dataSource.data = notas;
+          setTimeout(() => this.conectarDataSource());
+        },
       });
   }
 
   obterStatusTexto(status: StatusNota): string {
     return status === 1 ? 'Fechada' : 'Aberta';
+  }
+
+  private mostrarErro(mensagem: string): void {
+    this.snackBar.open(mensagem, 'Fechar', {
+      duration: 6000,
+      panelClass: ['erro-snackbar'],
+    });
   }
 
   obterStatusColor(status: StatusNota): string {

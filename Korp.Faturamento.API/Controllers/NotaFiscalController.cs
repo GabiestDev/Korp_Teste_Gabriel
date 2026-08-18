@@ -12,6 +12,7 @@ namespace Korp.Faturamento.API.Controllers
     {
         private readonly FaturamentoDbContext _context;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<NotaFiscalController> _logger;
 
         // Configurable parameters
         private const int PRINT_RETRY_COUNT = 3;
@@ -19,10 +20,11 @@ namespace Korp.Faturamento.API.Controllers
         private static readonly TimeSpan IDEMPOTENCY_EXPIRES = TimeSpan.FromHours(1);
         private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new(System.Text.Json.JsonSerializerDefaults.Web);
 
-        public NotaFiscalController(FaturamentoDbContext context, IHttpClientFactory httpClientFactory)
+        public NotaFiscalController(FaturamentoDbContext context, IHttpClientFactory httpClientFactory, ILogger<NotaFiscalController> logger)
         {
             _context = context;
             _httpClientFactory = httpClientFactory;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -98,7 +100,8 @@ namespace Korp.Faturamento.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Erro interno ao criar a nota fiscal.", detalhe = ex.Message });
+                _logger.LogError(ex, "Erro interno ao criar a nota fiscal.");
+                return StatusCode(500, new { message = "Erro interno ao criar a nota fiscal." });
             }
         }
 
@@ -162,6 +165,28 @@ namespace Korp.Faturamento.API.Controllers
 
                 var succeeded = new List<NotaFiscalItem>();
 
+                // Best-effort compensation: reverses stock already baixado for succeeded items.
+                async Task CompensarItens()
+                {
+                    foreach (var s in succeeded)
+                    {
+                        var estornarPayload = new { ProdutoId = s.ProdutoId, Quantidade = s.Quantidade };
+                        try
+                        {
+                            var estornarReq = new HttpRequestMessage(HttpMethod.Post, "/api/estoque/estornar")
+                            {
+                                Content = System.Net.Http.Json.JsonContent.Create(estornarPayload)
+                            };
+                            if (!string.IsNullOrEmpty(idempotencyKey))
+                            {
+                                estornarReq.Headers.Add("X-Idempotency-Key", $"{idempotencyKey}-nota-{nota.Id}-item-{s.ProdutoId}-estorno");
+                            }
+                            await estoqueClient.SendAsync(estornarReq);
+                        }
+                        catch { /* swallow - best effort */ }
+                    }
+                }
+
                 foreach (var item in nota.Itens)
                 {
                     var payload = new { ProdutoId = item.ProdutoId, Quantidade = item.Quantidade };
@@ -201,23 +226,7 @@ namespace Korp.Faturamento.API.Controllers
                         var erroEstoque = await response.Content.ReadAsStringAsync();
 
                         // compensate any succeeded items
-                        foreach (var s in succeeded)
-                        {
-                            var estornarPayload = new { ProdutoId = s.ProdutoId, Quantidade = s.Quantidade };
-                            try
-                            {
-                                var estornarReq = new HttpRequestMessage(HttpMethod.Post, "/api/estoque/estornar")
-                                {
-                                    Content = System.Net.Http.Json.JsonContent.Create(estornarPayload)
-                                };
-                                if (!string.IsNullOrEmpty(idempotencyKey))
-                                {
-                                    estornarReq.Headers.Add("X-Idempotency-Key", $"{idempotencyKey}-nota-{nota.Id}-item-{s.ProdutoId}-estorno");
-                                }
-                                await estoqueClient.SendAsync(estornarReq);
-                            }
-                            catch { /* swallow - best effort */ }
-                        }
+                        await CompensarItens();
 
                         return BadRequest(new { message = $"Falha ao baixar estoque do Produto ID {item.ProdutoId}.", detalhe = erroEstoque });
                     }
@@ -225,23 +234,7 @@ namespace Korp.Faturamento.API.Controllers
                     if (!itemOk)
                     {
                         // after retries still not ok - compensate and return
-                        foreach (var s in succeeded)
-                        {
-                            var estornarPayload = new { ProdutoId = s.ProdutoId, Quantidade = s.Quantidade };
-                            try
-                            {
-                                var estornarReq = new HttpRequestMessage(HttpMethod.Post, "/api/estoque/estornar")
-                                {
-                                    Content = System.Net.Http.Json.JsonContent.Create(estornarPayload)
-                                };
-                                if (!string.IsNullOrEmpty(idempotencyKey))
-                                {
-                                    estornarReq.Headers.Add("X-Idempotency-Key", $"{idempotencyKey}-nota-{nota.Id}-item-{s.ProdutoId}-estorno");
-                                }
-                                await estoqueClient.SendAsync(estornarReq);
-                            }
-                            catch { /* swallow */ }
-                        }
+                        await CompensarItens();
 
                         return Conflict(new { message = $"Não foi possível reservar/baixar estoque para o Produto ID {item.ProdutoId} após tentativas." });
                     }
@@ -279,7 +272,8 @@ namespace Korp.Faturamento.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Erro interno durante a impressão.", detalhe = ex.Message });
+                _logger.LogError(ex, "Erro interno durante a impressão da nota {NotaId}.", id);
+                return StatusCode(500, new { message = "Erro interno durante a impressão." });
             }
         }
     }

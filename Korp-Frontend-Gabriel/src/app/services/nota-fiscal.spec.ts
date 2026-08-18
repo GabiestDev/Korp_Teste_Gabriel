@@ -37,19 +37,15 @@ describe('NotaFiscalService', () => {
     req.flush({ id: 1, status: 'Aberta' });
   });
 
-  it('should toggle isPrinting signal while printing', () => {
+  it('should print an invoice via the billing microservice', () => {
     const id = 1;
 
-    expect(service.isPrinting()).toBe(false);
-
-    service.imprimirNota(id).subscribe();
-
-    expect(service.isPrinting()).toBe(true);
+    service.imprimirNota(id).subscribe((response) => {
+      expect(response).toEqual({ id: 1, status: 'Fechada' });
+    });
 
     const req = httpMock.expectOne(`${environment.apiUrlFaturamento}/${id}/imprimir`);
     expect(req.request.method).toBe('POST');
-    req.flush({ id: 1, status: 'Aberta' });
-
-    expect(service.isPrinting()).toBe(false);
+    req.flush({ id: 1, status: 'Fechada' });
   });
 });
