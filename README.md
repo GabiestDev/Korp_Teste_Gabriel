@@ -1,5 +1,19 @@
 # Korp - Estoque & Faturamento
 
+## Verificação do Docker (executada localmente)
+
+Nesta máquina o Docker foi verificado e os resultados foram:
+- Docker Desktop: 4.87.0
+- Docker Engine: 29.7.2
+- Docker Compose (plugin): v5.4.0
+
+Se desejar executar a checagem localmente, rode:
+- docker version
+- docker info
+- docker compose version
+
+
+
 Este repositório contém dois microsserviços (.NET) e um frontend Angular para gerenciar produtos e notas fiscais:
 
 - Korp.Estoque.API — serviço de Estoque (produtos, saldos, endpoints de baixar/estornar)
