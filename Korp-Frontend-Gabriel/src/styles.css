@@ -169,17 +169,13 @@ h1 {
 }
 
 /* Material form fields */
-mat-form-field,
-.mat-form-field,
-.mat-mdc-form-field {
+.mat-mdc-text-field-wrapper {
   background: #ffffff;
   border-radius: 10px;
   border: 1px solid #dfe8ef;
 }
 
-mat-form-field:focus-within,
-.mat-form-field:focus-within,
-.mat-mdc-form-field:focus-within {
+.mat-mdc-text-field-wrapper:focus-within {
   border-color: var(--korp-blue-light);
   box-shadow: 0 0 0 3px rgba(140, 178, 202, 0.25);
 }
