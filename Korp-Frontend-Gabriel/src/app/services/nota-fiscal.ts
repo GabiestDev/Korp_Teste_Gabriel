@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, catchError, finalize, throwError } from 'rxjs';
 
-const API_URL = 'http://localhost:5090/api/NotaFiscal';
+const API_URL = 'http://localhost:5164/api/NotaFiscal';
 
 @Injectable({
   providedIn: 'root'

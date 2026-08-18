@@ -30,7 +30,7 @@ describe('NotaFiscalService', () => {
       expect(response).toEqual({ id: 1, status: 'Aberta' });
     });
 
-    const req = httpMock.expectOne('http://localhost:5090/api/NotaFiscal');
+    const req = httpMock.expectOne('http://localhost:5164/api/NotaFiscal');
     expect(req.request.method).toBe('POST');
     req.flush({ id: 1, status: 'Aberta' });
   });
