@@ -16,6 +16,10 @@
     </nav>
   </header>
 
+  @if (carregando) {
+    <mat-progress-bar mode="indeterminate" class="global-loading"></mat-progress-bar>
+  }
+
   <main class="content-shell">
     <router-outlet></router-outlet>
 

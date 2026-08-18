@@ -1,13 +1,17 @@
 ﻿using Korp.Faturamento.API.Data;
 using Korp.Faturamento.API.DTOs;
 using Korp.Faturamento.API.Models;
+using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Korp.Faturamento.API.Controllers
 {
     [ApiController]
+    [ApiVersion("1.0")]
     [Route("api/[controller]")]
+    [Authorize]
     public class NotaFiscalController : ControllerBase
     {
         private readonly FaturamentoDbContext _context;
@@ -113,12 +117,19 @@ namespace Korp.Faturamento.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> ListarTodas()
+        public async Task<IActionResult> ListarTodas([FromQuery] int? page = null, [FromQuery] int pageSize = 20)
         {
-            var notas = await _context.NotasFiscais
+            var query = _context.NotasFiscais
                 .Include(n => n.Itens)
-                .ToListAsync();
+                .OrderByDescending(n => n.Id);
 
+            if (page.HasValue)
+            {
+                var paginado = await query.ToPaginatedAsync(page.Value, pageSize);
+                return Ok(ApiResponse.Ok("Notas fiscais listadas com sucesso.", paginado));
+            }
+
+            var notas = await query.ToListAsync();
             return Ok(ApiResponse.Ok("Notas fiscais listadas com sucesso.", notas));
         }
 
@@ -184,6 +195,7 @@ namespace Korp.Faturamento.API.Controllers
                             {
                                 Content = System.Net.Http.Json.JsonContent.Create(estornarPayload)
                             };
+                            PropagarAutorizacao(estornarReq);
                             if (!string.IsNullOrEmpty(idempotencyKey))
                             {
                                 estornarReq.Headers.Add("X-Idempotency-Key", $"{idempotencyKey}-nota-{nota.Id}-item-{s.ProdutoId}-estorno");
@@ -206,6 +218,8 @@ namespace Korp.Faturamento.API.Controllers
                         {
                             Content = System.Net.Http.Json.JsonContent.Create(payload)
                         };
+
+                        PropagarAutorizacao(request);
 
                         // propagate idempotency key, make it unique per nota/item
                         if (!string.IsNullOrEmpty(idempotencyKey))
@@ -282,6 +296,21 @@ namespace Korp.Faturamento.API.Controllers
             {
                 _logger.LogError(ex, "Erro interno durante a impressão da nota {NotaId}.", id);
                 return StatusCode(500, ApiResponse.Error(500, "Erro interno durante a impressão."));
+            }
+        }
+
+        private void PropagarAutorizacao(HttpRequestMessage request)
+        {
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(authHeader))
+            {
+                request.Headers.TryAddWithoutValidation("Authorization", authHeader);
+            }
+
+            var requestId = Request.Headers["X-Request-Id"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(requestId))
+            {
+                request.Headers.TryAddWithoutValidation("X-Request-Id", requestId);
             }
         }
     }

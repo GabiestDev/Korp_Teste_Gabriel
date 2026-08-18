@@ -1,17 +1,29 @@
 ﻿using Korp.Estoque.API.Data;
 using Korp.Estoque.API.DTOs;
 using Korp.Estoque.API.Models;
+using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 
 namespace Korp.Estoque.API.Controllers
 {
     [ApiController]
+    [ApiVersion("1.0")]
     [Route("api/[controller]")]
+    [Authorize]
     public class EstoqueController : ControllerBase
     {
         private readonly EstoqueDbContext _context;
         private readonly ILogger<EstoqueController> _logger;
+        private static readonly Polly.AsyncPolicy SalvarComRetry = Policy
+            .Handle<Npgsql.NpgsqlException>(ex =>
+                ex.IsTransient ||
+                ex.SqlState == "08003" || // connection does not exist
+                ex.SqlState == "08006" || // connection failure
+                ex.SqlState == "53300")   // too many connections
+            .WaitAndRetryAsync(3, attempt => TimeSpan.FromMilliseconds(100 * Math.Pow(2, attempt)));
 
         public EstoqueController(EstoqueDbContext context, ILogger<EstoqueController> logger)
         {
@@ -20,12 +32,17 @@ namespace Korp.Estoque.API.Controllers
         }
 
         [HttpGet("produto")]
-        public async Task<IActionResult> ListarProdutos()
+        public async Task<IActionResult> ListarProdutos([FromQuery] int? page = null, [FromQuery] int pageSize = 20)
         {
-            var produtos = await _context.Produtos
-                .OrderBy(p => p.Id)
-                .ToListAsync();
+            var query = _context.Produtos.OrderBy(p => p.Id);
 
+            if (page.HasValue)
+            {
+                var paginado = await query.ToPaginatedAsync(page.Value, pageSize);
+                return Ok(ApiResponse.Ok("Produtos listados com sucesso.", paginado));
+            }
+
+            var produtos = await query.ToListAsync();
             return Ok(ApiResponse.Ok("Produtos listados com sucesso.", produtos));
         }
 
@@ -113,7 +130,7 @@ namespace Korp.Estoque.API.Controllers
 
             try
             {
-                await _context.SaveChangesAsync();
+                await SalvarComRetry.ExecuteAsync(() => _context.SaveChangesAsync());
                 var ok = ApiResponse.Ok("Estoque atualizado com sucesso.", produto);
 
                 if (!string.IsNullOrEmpty(idempotencyKey))
@@ -251,7 +268,7 @@ namespace Korp.Estoque.API.Controllers
 
             try
             {
-                await _context.SaveChangesAsync();
+                await SalvarComRetry.ExecuteAsync(() => _context.SaveChangesAsync());
                 var ok = ApiResponse.Ok("Estorno realizado com sucesso.", produto);
 
                 if (!string.IsNullOrEmpty(idempotencyKey))

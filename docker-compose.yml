@@ -23,6 +23,11 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__EstoqueDb=Host=db;Port=5432;Database=EstoqueDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      - Jwt__Key=${JWT_KEY:-korp-dev-secret-chave-segura-para-assinatura-jwt-2026}
+      - Jwt__Issuer=${JWT_ISSUER:-Korp}
+      - Jwt__Audience=${JWT_AUDIENCE:-Korp-Angular}
+      - Auth__Username=${AUTH_USERNAME:-gabriel}
+      - Auth__Password=${AUTH_PASSWORD:-senha123}
       - ASPNETCORE_URLS=http://+:5090
     depends_on:
       db:
@@ -44,6 +49,9 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__FaturamentoDb=Host=db;Port=5432;Database=FaturamentoDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       - EstoqueService__BaseUrl=http://estoque:5090
+      - Jwt__Key=${JWT_KEY:-korp-dev-secret-chave-segura-para-assinatura-jwt-2026}
+      - Jwt__Issuer=${JWT_ISSUER:-Korp}
+      - Jwt__Audience=${JWT_AUDIENCE:-Korp-Angular}
       - ASPNETCORE_URLS=http://+:5164
     depends_on:
       db:

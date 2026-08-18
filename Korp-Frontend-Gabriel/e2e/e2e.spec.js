@@ -1,12 +1,21 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, request } from '@playwright/test';
 
 const BASE = 'http://localhost:4200';
 const ESTOQUE = 'http://localhost:5090/api/Estoque';
 const FATURAMENTO = 'http://localhost:5164/api/NotaFiscal';
+const AUTH = 'http://localhost:5090/api/Auth/login';
 
 const TS = Date.now();
 const CODIGO = `E2E-${TS}`;
 const CODIGO_UI = `E2E-UI-${TS}`;
+
+async function obterToken() {
+  const ctx = await request.newContext();
+  const resp = await ctx.post(AUTH, { data: { username: 'gabriel', senha: 'senha123' } });
+  const body = await resp.json();
+  await ctx.dispose();
+  return body.data.token;
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto(`${BASE}/login`);
@@ -40,8 +49,10 @@ test('04 - navbar mostra nome do usuario autenticado', async ({ page }) => {
 });
 
 test('05 - API: produto duplicado mostra snackbar de erro', async ({ request }) => {
-  await request.post(`${ESTOQUE}/produto`, { data: { codigo: CODIGO, descricao: 'Interceptador', saldo: 5 } });
-  const resp = await request.post(`${ESTOQUE}/produto`, { data: { codigo: CODIGO, descricao: 'Interceptador', saldo: 5 } });
+  const token = await obterToken();
+  const headers = { Authorization: `Bearer ${token}` };
+  await request.post(`${ESTOQUE}/produto`, { data: { codigo: CODIGO, descricao: 'Interceptador', saldo: 5 }, headers });
+  const resp = await request.post(`${ESTOQUE}/produto`, { data: { codigo: CODIGO, descricao: 'Interceptador', saldo: 5 }, headers });
   expect(resp.status()).toBe(409);
 });
 
@@ -63,11 +74,13 @@ test('07 - Frontend /produtos: cadastrar novo produto pela UI', async ({ page })
 });
 
 test('08 - Frontend /notas-fiscais: criar nota e imprimir (fluxo completo)', async ({ page }) => {
+  const token = await obterToken();
+  const headers = { Authorization: `Bearer ${token}` };
   await page.goto(`${BASE}/notas-fiscais`);
-  const lista = await (await page.request.get(`${ESTOQUE}/produto`)).json();
+  const lista = await (await page.request.get(`${ESTOQUE}/produto`, { headers })).json();
   const p = lista.data.find((x) => x.codigo === CODIGO);
   if (!p) {
-    const novo = await page.request.post(`${ESTOQUE}/produto`, { data: { codigo: CODIGO, descricao: 'Produto E2E', saldo: 10 } });
+    const novo = await page.request.post(`${ESTOQUE}/produto`, { data: { codigo: CODIGO, descricao: 'Produto E2E', saldo: 10 }, headers });
     if (!novo.ok()) throw new Error('falha ao criar produto');
   }
   await page.goto(`${BASE}/notas-fiscais`);
@@ -78,12 +91,14 @@ test('08 - Frontend /notas-fiscais: criar nota e imprimir (fluxo completo)', asy
 });
 
 test('09 - API: idempotency retorna mesma nota no replay (camelCase)', async ({ request }) => {
-  const list = await (await request.get(`${ESTOQUE}/produto`)).json();
+  const token = await obterToken();
+  const headers = { Authorization: `Bearer ${token}` };
+  const list = await (await request.get(`${ESTOQUE}/produto`, { headers })).json();
   const p = list.data.find((x) => x.codigo === CODIGO);
   const body = { itens: [{ produtoId: p.id, quantidade: 1 }] };
   const key = `teste-${TS}`;
-  const r1 = await request.post(`${FATURAMENTO}`, { data: body, headers: { 'X-Idempotency-Key': key } });
-  const r2 = await request.post(`${FATURAMENTO}`, { data: body, headers: { 'X-Idempotency-Key': key } });
+  const r1 = await request.post(`${FATURAMENTO}`, { data: body, headers: { ...headers, 'X-Idempotency-Key': key } });
+  const r2 = await request.post(`${FATURAMENTO}`, { data: body, headers: { ...headers, 'X-Idempotency-Key': key } });
   expect(r1.status()).toBe(201);
   expect(r2.status()).toBe(201);
   const b1 = await r1.json();

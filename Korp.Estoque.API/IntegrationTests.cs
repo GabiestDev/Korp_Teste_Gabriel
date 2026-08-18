@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Xunit;
@@ -10,10 +11,23 @@ public class IntegrationConcurrencyTests
     private const string EstoqueUrl = "http://localhost:5090";
     private const string FaturamentoUrl = "http://localhost:5164";
 
+    private static async Task<HttpClient> CriarHttpClientAutenticado()
+    {
+        var http = new HttpClient();
+        var login = await http.PostAsJsonAsync(
+            $"{EstoqueUrl}/api/Auth/login",
+            new { username = "gabriel", senha = "senha123" });
+        login.EnsureSuccessStatusCode();
+        var loginObj = await login.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var token = loginObj.GetProperty("data").GetProperty("token").GetString();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return http;
+    }
+
     [Fact]
     public async Task ConcurrentPrints_OneSucceeds_OneFails_ProductConsistent()
     {
-        using var http = new HttpClient();
+        using var http = await CriarHttpClientAutenticado();
 
         // create product saldo=1
         var uniqueCode = "IT-CT-" + Guid.NewGuid().ToString("N").Substring(0,8);

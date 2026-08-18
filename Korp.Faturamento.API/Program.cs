@@ -1,12 +1,60 @@
 using Korp.Faturamento.API.Data;
+using Asp.Versioning;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Polly;
 using Polly.Extensions.Http;
+using Serilog;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+});
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+});
+
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<Korp.Faturamento.API.Data.ApiValidationFilter>();
+});
 builder.Services.AddOpenApi();
+
+builder.Services.AddValidatorsFromAssemblyContaining<Korp.Faturamento.API.DTOs.CriarNotaFiscalDto>();
+builder.Services.AddFluentValidationAutoValidation();
+
+var jwtKey = builder.Configuration.GetValue<string>("Jwt:Key")
+    ?? "korp-dev-secret-chave-segura-para-assinatura-jwt-2026";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration.GetValue<string>("Jwt:Issuer") ?? "Korp",
+            ValidAudience = builder.Configuration.GetValue<string>("Jwt:Audience") ?? "Korp-Angular",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var faturamentoConnectionString = builder.Configuration.GetConnectionString("FaturamentoDb")
     ?? "Host=localhost;Port=5432;Database=FaturamentoDB;Username=postgres;Password=postgres";
@@ -53,17 +101,7 @@ try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<FaturamentoDbContext>();
-    try
-    {
-        db.Database.Migrate();
-    }
-    catch (Exception migrateEx)
-    {
-        // Legacy database created with EnsureCreated has no migration history.
-        // Fall back to ensuring the schema exists so the service keeps working.
-        app.Logger.LogWarning(migrateEx, "Não foi possível aplicar migrations; verificando schema existente.");
-        db.Database.EnsureCreated();
-    }
+    DatabaseBootstrap.EnsureMigrated(db, app.Logger);
 }
 catch (Exception ex)
 {
@@ -104,6 +142,8 @@ app.MapGet("/health", async () =>
 
 app.UseCors("AllowAngular");
 app.UseHttpsRedirection();
+app.UseRequestId();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

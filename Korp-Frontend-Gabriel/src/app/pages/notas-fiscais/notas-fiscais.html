@@ -4,9 +4,9 @@
   </div>
 
   <div class="toolbar-row">
-    <mat-form-field appearance="outline" class="field-wide">
+    <mat-form-field appearance="outline" class="field-wide" [formGroup]="itemForm">
       <mat-label>Produto</mat-label>
-      <mat-select [(ngModel)]="novoProdutoId">
+      <mat-select formControlName="produtoId">
         @for (produto of produtosDisponiveis(); track produto.id) {
           <mat-option [value]="produto.id">
             {{ produto.descricao }} ({{ produto.codigo }}) - Saldo: {{ produto.saldo }}
@@ -15,9 +15,9 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="field">
+    <mat-form-field appearance="outline" class="field" [formGroup]="itemForm">
       <mat-label>Quantidade</mat-label>
-      <input matInput type="number" min="1" [(ngModel)]="novaQuantidade">
+      <input matInput type="number" min="1" formControlName="quantidade">
     </mat-form-field>
 
     <div class="form-actions">

@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ChangeDetectionStrategy, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
@@ -23,7 +23,7 @@ import { MensagemService } from '../../shared/mensagem.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
@@ -39,6 +39,7 @@ export class NotasFiscaisComponent implements AfterViewInit {
   private readonly notaFiscalService = inject(NotaFiscalService);
   private readonly produtoService = inject(ProdutoService);
   private readonly mensagemService = inject(MensagemService);
+  private readonly fb = inject(FormBuilder);
 
   notas = signal<NotaFiscal[]>([]);
   dataSource = new MatTableDataSource<NotaFiscal>();
@@ -48,10 +49,17 @@ export class NotasFiscaisComponent implements AfterViewInit {
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;
 
-  novoProdutoId = 0;
-  novaQuantidade = 1;
+  itemForm = this.fb.nonNullable.group({
+    produtoId: [0, [Validators.required, Validators.min(1)]],
+    quantidade: [1, [Validators.required, Validators.min(1)]],
+  });
+
   itensAdicionados = signal<Array<{ produtoId: number; quantidade: number }>>([]);
   imprimindoId = signal<number | null>(null);
+
+  get f() {
+    return this.itemForm.controls;
+  }
 
   constructor() {
     this.carregarNotas();
@@ -71,8 +79,8 @@ export class NotasFiscaisComponent implements AfterViewInit {
     this.produtoService.listar().subscribe({
       next: (produtos) => {
         this.produtosDisponiveis.set(produtos);
-        if (produtos.length && !this.novoProdutoId) {
-          this.novoProdutoId = produtos[0].id;
+        if (produtos.length && !this.f.produtoId.value) {
+          this.itemForm.patchValue({ produtoId: produtos[0].id });
         }
       },
     });
@@ -89,22 +97,21 @@ export class NotasFiscaisComponent implements AfterViewInit {
   }
 
   adicionarItem(): void {
-    if (!this.novoProdutoId || this.novaQuantidade <= 0) {
+    if (this.itemForm.invalid) {
+      this.itemForm.markAllAsTouched();
       this.mensagemService.mostrarErro('Informe um produto válido e uma quantidade maior que zero.');
       return;
     }
 
-    if (this.itensAdicionados().some((item) => item.produtoId === this.novoProdutoId)) {
+    const { produtoId, quantidade } = this.itemForm.getRawValue();
+
+    if (this.itensAdicionados().some((item) => item.produtoId === produtoId)) {
       this.mensagemService.mostrarErro('Este produto já foi adicionado à nota atual.');
       return;
     }
 
-    this.itensAdicionados.update((itens) => [
-      ...itens,
-      { produtoId: this.novoProdutoId, quantidade: this.novaQuantidade },
-    ]);
-
-    this.novaQuantidade = 1;
+    this.itensAdicionados.update((itens) => [...itens, { produtoId, quantidade }]);
+    this.itemForm.patchValue({ quantidade: 1 });
   }
 
   criarNota(): void {

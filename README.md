@@ -25,13 +25,20 @@ Os dois microsserviços compartilham a mesma infraestrutura de dados (PostgreSQL
 
 ### Faturamento (`Korp.Faturamento.API`)
 - **Criação de nota fiscal** — nota com status `Aberta`, contendo um ou mais itens (produto + quantidade); o número sequencial é gerado automaticamente.
-- **Listagem de notas** — todas as notas com seus itens.
+- **Listagem de notas** — todas as notas com seus itens (com paginação opcional).
 - **Consulta de nota por ID**.
 - **Impressão / fechamento de nota** — apenas notas `Aberta` podem ser impressas; ao imprimir, o sistema baixa o estoque de cada item e muda a nota para `Fechada`.
 
 ### Frontend (`Korp-Frontend-Gabriel`)
-- **Página `/produtos`** — tabela de produtos e formulário para cadastrar novos (código, descrição, saldo).
+- **Login** — tela de autenticação; o token JWT é guardado e enviado em todas as requisições.
+- **Página `/produtos`** — tabela de produtos e formulário para cadastrar novos (código, descrição, saldo) com validação reativa.
 - **Página `/notas-fiscais`** (tela inicial) — lista as notas com número sequencial, itens, status e ações; permite adicionar itens (produto + quantidade), criar nota e imprimir.
+
+## Segurança
+
+- **Autenticação JWT** — `POST /api/auth/login` valida credenciais e emite um token assinado. Todas as rotas protegidas exigem `Authorization: Bearer <token>`. Usuário demo padrão: `gabriel` / `senha123` (configurável via `Auth__Username`/`Auth__Password`).
+- O Faturamento propaga o token recebido ao chamar o Estoque, e o header `X-Request-Id` é repassado para correlação de logs (Serilog).
+- Os endpoints de escrita importantes aceitam o header opcional `X-Idempotency-Key` para garantir idempotência em replays.
 
 ## Tratamento de concorrência, idempotência e falhas
 
@@ -44,7 +51,8 @@ Os dois microsserviços compartilham a mesma infraestrutura de dados (PostgreSQL
 ### Estoque (`http://localhost:5090`)
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/api/estoque/produto` | Lista produtos |
+| `POST` | `/api/auth/login` | Autentica e retorna um token JWT (público) |
+| `GET` | `/api/estoque/produto` | Lista produtos (paginação opcional: `?page=&pageSize=`) |
 | `POST` | `/api/estoque/produto` | Cadastra produto (`codigo`, `descricao`, `saldo`) |
 | `POST` | `/api/estoque/baixar` | Baixa estoque (`produtoId`, `quantidade`) |
 | `POST` | `/api/estoque/estornar` | Estorna estoque (`produtoId`, `quantidade`) |
@@ -53,11 +61,12 @@ Os dois microsserviços compartilham a mesma infraestrutura de dados (PostgreSQL
 | Método | Rota | Descrição |
 |---|---|---|
 | `POST` | `/api/notafiscal` | Cria nota fiscal (`itens`: lista de `produtoId` + `quantidade`) |
-| `GET` | `/api/notafiscal` | Lista todas as notas |
+| `GET` | `/api/notafiscal` | Lista todas as notas (paginação opcional: `?page=&pageSize=`) |
 | `GET` | `/api/notafiscal/{id}` | Consulta nota por ID |
 | `POST` | `/api/notafiscal/{id}/imprimir` | Imprime e fecha a nota (baixa estoque dos itens) |
 
-Endpoints de escrita importantes aceitam o header opcional `X-Idempotency-Key` para garantir idempotência em replays.
+> As rotas acima exigem `Authorization: Bearer <token>` (exceto o login). Para obter um token:
+> `POST /api/auth/login` com `{"username":"gabriel","senha":"senha123"}`.
 
 ## Como rodar
 
@@ -120,19 +129,24 @@ Se o frontend estiver fora do repositório e você quiser copiá-lo para dentro 
 
 ```
 ├── Korp.Estoque.API/          # Microsserviço de Estoque (.NET)
-│   ├── Controllers/           # EstoqueController
-│   ├── Data/                  # EstoqueDbContext + migrations
+│   ├── Controllers/           # AuthController, EstoqueController
+│   ├── Data/                  # EstoqueDbContext, DatabaseBootstrap, migrations, middlewares
+│   ├── DTOs/                  # DTOs, validadores (FluentValidation), paginação
 │   ├── Models/                # Produto, IdempotencyEntry
 │   └── Dockerfile
 ├── Korp.Faturamento.API/      # Microsserviço de Faturamento (.NET)
 │   ├── Controllers/           # NotaFiscalController
-│   ├── Data/                  # FaturamentoDbContext + migrations
+│   ├── Data/                  # FaturamentoDbContext, DatabaseBootstrap, migrations, middlewares
+│   ├── DTOs/                  # DTOs, validadores (FluentValidation), paginação
 │   ├── Models/                # NotaFiscal, NotaFiscalItem, StatusNota, IdempotencyEntry
 │   └── Dockerfile
 ├── Korp-Frontend-Gabriel/     # Frontend Angular
 │   └── src/app/
-│       ├── pages/             # produtos e notas-fiscais
-│       └── services/          # produto e nota-fiscal (consumem as APIs)
+│       ├── core/              # auth/loading/http-error interceptors, auth.service, guards
+│       ├── pages/             # login, produtos e notas-fiscais
+│       └── services/          # produto e nota-fiscal (consomem as APIs)
+├── Korp.Tests/                # Testes unitários do backend (xUnit)
+├── .github/workflows/         # CI (GitHub Actions)
 ├── docker/postgres-init/      # init.sql (cria EstoqueDB e FaturamentoDB)
 ├── docker-compose.yml         # orquestração da stack
 ├── .env.example               # configuração de contexto do frontend
