@@ -2,7 +2,7 @@ FROM node:18 AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --silent
+RUN npm install --silent --no-audit --no-fund
 
 COPY . .
 RUN npm run build -- --configuration production
