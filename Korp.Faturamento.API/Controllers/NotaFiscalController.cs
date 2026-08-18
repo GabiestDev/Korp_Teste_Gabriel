@@ -17,6 +17,7 @@ namespace Korp.Faturamento.API.Controllers
         private const int PRINT_RETRY_COUNT = 3;
         private const int PRINT_BACKOFF_MS = 150;
         private static readonly TimeSpan IDEMPOTENCY_EXPIRES = TimeSpan.FromHours(1);
+        private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new(System.Text.Json.JsonSerializerDefaults.Web);
 
         public NotaFiscalController(FaturamentoDbContext context, IHttpClientFactory httpClientFactory)
         {
@@ -76,7 +77,7 @@ namespace Korp.Faturamento.API.Controllers
                 _context.NotasFiscais.Add(notaFiscal);
                 await _context.SaveChangesAsync();
 
-                var responseBody = System.Text.Json.JsonSerializer.Serialize(notaFiscal);
+                var responseBody = System.Text.Json.JsonSerializer.Serialize(notaFiscal, JsonOptions);
 
                 if (!string.IsNullOrEmpty(idempotencyKey))
                 {
@@ -249,7 +250,7 @@ namespace Korp.Faturamento.API.Controllers
                 nota.Status = StatusNota.Fechada;
                 await _context.SaveChangesAsync();
 
-                var successResp = System.Text.Json.JsonSerializer.Serialize(new { message = "Nota fiscal impressa e fechada com sucesso!" });
+                var successResp = System.Text.Json.JsonSerializer.Serialize(new { message = "Nota fiscal impressa e fechada com sucesso!" }, JsonOptions);
 
                 if (!string.IsNullOrEmpty(routeKey))
                 {
