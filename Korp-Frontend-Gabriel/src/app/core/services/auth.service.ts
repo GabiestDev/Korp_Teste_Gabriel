@@ -22,7 +22,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly token = signal<string | null>(this.lerToken());
 
-  readonly autenticado = computed(() => this.token() !== null);
+  readonly autenticado = computed(() => this.tokenValido(this.token()));
 
   login(username: string, senha: string): Observable<Usuario> {
     return this.http
@@ -47,20 +47,51 @@ export class AuthService {
 
   usuario(): Usuario | null {
     const token = this.token();
-    if (!token) return null;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return { nome: payload.sub ?? 'Usuario', username: payload.sub ?? '' };
-    } catch {
-      return null;
-    }
+    if (!this.tokenValido(token)) return null;
+    const payload = decodificarPayload(token);
+    if (!payload) return null;
+    const nome = (payload['sub'] as string | undefined) ?? (payload['name'] as string | undefined) ?? 'Usuario';
+    return { nome, username: nome };
   }
 
   obterToken(): string | null {
-    return this.token();
+    const token = this.token();
+    return this.tokenValido(token) ? token : null;
   }
 
   private lerToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token && !this.tokenValido(token)) {
+      localStorage.removeItem(TOKEN_KEY);
+      return null;
+    }
+    return token;
+  }
+
+  private tokenValido(token: string | null): token is string {
+    if (!token) return false;
+    const payload = decodificarPayload(token);
+    if (!payload) return false;
+    const exp = payload['exp'];
+    if (typeof exp !== 'number') return true;
+    return exp * 1000 > Date.now();
+  }
+}
+
+function decodificarPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parte = token.split('.')[1];
+    if (!parte) return null;
+    const base64 = parte.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    const json = decodeURIComponent(
+      atob(pad)
+        .split('')
+        .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+        .join(''),
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
   }
 }

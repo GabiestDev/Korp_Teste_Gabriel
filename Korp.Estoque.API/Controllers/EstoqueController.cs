@@ -87,42 +87,12 @@ namespace Korp.Estoque.API.Controllers
             if (produto == null)
             {
                 var notFound = ApiResponse.Error(404, "Produto não encontrado no estoque.");
-                if (!string.IsNullOrEmpty(idempotencyKey))
-                {
-                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
-                    {
-                        Key = idempotencyKey,
-                        Route = "baixar",
-                        RequestHash = requestHash,
-                        RequestHeaders = requestHeaders,
-                        ResponseStatus = 404,
-                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(notFound),
-                        ExpiresAt = DateTime.UtcNow.AddMinutes(30)
-                    });
-                    await _context.SaveChangesAsync();
-                }
-
                 return NotFound(notFound);
             }
 
             if (produto.Saldo < dto.Quantidade)
             {
                 var bad = ApiResponse.Error(400, $"Saldo insuficiente. Saldo atual: {produto.Saldo}");
-                if (!string.IsNullOrEmpty(idempotencyKey))
-                {
-                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
-                    {
-                        Key = idempotencyKey,
-                        Route = "baixar",
-                        RequestHash = requestHash,
-                        RequestHeaders = requestHeaders,
-                        ResponseStatus = 400,
-                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(bad),
-                        ExpiresAt = DateTime.UtcNow.AddMinutes(30)
-                    });
-                    await _context.SaveChangesAsync();
-                }
-
                 return BadRequest(bad);
             }
 
@@ -153,36 +123,12 @@ namespace Korp.Estoque.API.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 var conflict = ApiResponse.Error(409, "Conflito de concorrência: O saldo deste produto foi atualizado por outra transação simultânea. Tente novamente.");
-                if (!string.IsNullOrEmpty(idempotencyKey))
-                {
-                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
-                    {
-                        Key = idempotencyKey,
-                        Route = "baixar",
-                        ResponseStatus = 409,
-                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(conflict)
-                    });
-                    await _context.SaveChangesAsync();
-                }
-
                 return Conflict(conflict);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro interno ao atualizar estoque do produto {ProdutoId}.", dto.ProdutoId);
                 var err = ApiResponse.Error(500, "Erro interno ao atualizar estoque.");
-                if (!string.IsNullOrEmpty(idempotencyKey))
-                {
-                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
-                    {
-                        Key = idempotencyKey,
-                        Route = "baixar",
-                        ResponseStatus = 500,
-                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(err)
-                    });
-                    await _context.SaveChangesAsync();
-                }
-
                 return StatusCode(500, err);
             }
         }
@@ -247,20 +193,6 @@ namespace Korp.Estoque.API.Controllers
             if (produto == null)
             {
                 var notFound = ApiResponse.Error(404, "Produto não encontrado no estoque.");
-                if (!string.IsNullOrEmpty(idempotencyKey))
-                {
-                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
-                    {
-                        Key = idempotencyKey,
-                        Route = "estornar",
-                        RequestHash = requestHash,
-                        ResponseStatus = 404,
-                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(notFound),
-                        ExpiresAt = DateTime.UtcNow.AddMinutes(30)
-                    });
-                    await _context.SaveChangesAsync();
-                }
-
                 return NotFound(notFound);
             }
 
@@ -291,18 +223,6 @@ namespace Korp.Estoque.API.Controllers
             {
                 _logger.LogError(ex, "Erro interno ao estornar estoque do produto {ProdutoId}.", dto.ProdutoId);
                 var err = ApiResponse.Error(500, "Erro interno ao estornar estoque.");
-                if (!string.IsNullOrEmpty(idempotencyKey))
-                {
-                    _context.IdempotencyEntries.Add(new Models.IdempotencyEntry
-                    {
-                        Key = idempotencyKey,
-                        Route = "estornar",
-                        ResponseStatus = 500,
-                        ResponseBody = System.Text.Json.JsonSerializer.Serialize(err)
-                    });
-                    await _context.SaveChangesAsync();
-                }
-
                 return StatusCode(500, err);
             }
         }

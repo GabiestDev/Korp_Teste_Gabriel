@@ -38,7 +38,7 @@ namespace Korp.Faturamento.API.Controllers
             var idempotencyKey = Request.Headers["X-Idempotency-Key"].FirstOrDefault();
             var requestBody = System.Text.Json.JsonSerializer.Serialize(dto);
             var requestHash = System.BitConverter.ToString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(requestBody))).Replace("-", "");
-            var requestHeaders = string.Join(';', Request.Headers.Select(h => h.Key + ":" + string.Join(',', h.Value)));
+            var requestHeaders = string.Join(';', Request.Headers.Select(h => h.Key + ":" + h.Value.ToString()));
 
             if (!string.IsNullOrEmpty(idempotencyKey))
             {

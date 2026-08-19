@@ -1,15 +1,28 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 
 import { MensagemApi } from '../../models/nota-fiscal.model';
+import { AuthService } from '../services/auth.service';
 import { MensagemService } from '../../shared/mensagem.service';
 
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
   const mensagemService = inject(MensagemService);
+  const authService = inject(AuthService);
+  const router = inject(Router);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      const ehLogin = req.url.includes('/auth/login');
+
+      if (error.status === 401 && !ehLogin) {
+        mensagemService.mostrarErro('Sessão expirada ou inválida. Faça login novamente.');
+        authService.logout();
+        router.navigate(['/login']);
+        return throwError(() => error);
+      }
+
       const { mensagem, statusCode } = extrairMensagem(error);
       mensagemService.mostrarErro(mensagem, statusCode);
       return throwError(() => error);
