@@ -3,8 +3,10 @@ using Asp.Versioning;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Serilog;
 using System.Text;
 
@@ -29,7 +31,30 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<Korp.Estoque.API.Data.ApiValidationFilter>();
 });
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken) =>
+    {
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Name = "Authorization",
+            Description = "Token JWT obtido em POST /api/auth/login (cole apenas o token)."
+        };
+
+        document.Security ??= new List<OpenApiSecurityRequirement>();
+        document.Security.Add(new OpenApiSecurityRequirement
+        {
+            { new OpenApiSecuritySchemeReference("bearer", document, null), new List<string>() }
+        });
+        return Task.CompletedTask;
+    });
+});
 
 builder.Services.AddValidatorsFromAssemblyContaining<Korp.Estoque.API.DTOs.CadastrarProdutoDto>();
 builder.Services.AddFluentValidationAutoValidation();
