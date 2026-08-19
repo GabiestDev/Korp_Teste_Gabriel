@@ -12,13 +12,14 @@
   - Serviços retornam Observables tipados (ex.: [produto.ts](Korp-Frontend-Gabriel/src/app/services/produto.ts), [nota-fiscal.ts](Korp-Frontend-Gabriel/src/app/services/nota-fiscal.ts)).
   - Estado reativo é mantido com signals (`signal`/`computed`), ex.: `produtos`, `notas`, `itensAdicionados`, `imprimindoId`, `token`, `autenticado`.
   - Uso de operadores: `switchMap` para encadear ações seguidas de reload e `finalize` para limpar estado de "imprimindo" (ver `imprimir` em [notas-fiscais.ts](Korp-Frontend-Gabriel/src/app/pages/notas-fiscais/notas-fiscais.ts)).
-- Erros HTTP são tratados globalmente pelo interceptor [http-error.interceptor.ts](Korp-Frontend-Gabriel/src/app/core/interceptors/http-error.interceptor.ts), que exibe um diálogo (modal) com a mensagem e o status retornados pela API no envelope `ApiResponse`.
+- Erros HTTP são tratados globalmente pelo interceptor [http-error.interceptor.ts](Korp-Frontend-Gabriel/src/app/core/interceptors/http-error.interceptor.ts), que exibe um diálogo (modal) com a mensagem e o status retornados pela API no envelope `ApiResponse`. Todas as subscriptions dos componentes possuem handler de `error` (sem erros não tratados no console), e o redirecionamento de sessão expirada é deduplicado (flag módulo-scope) para evitar múltiplos diálogos quando várias requisições falham em paralelo.
 
 3) Autenticação JWT
-- O login real acontece no Estoque: `POST /api/auth/login` ([AuthController.cs](Korp.Estoque.API/Controllers/AuthController.cs)) valida credenciais em configuração (`Auth__Username`/`Auth__Password`, padrão `gabriel`/`senha123`) e emite um token JWT assinado com `Jwt__Key`.
+- O login real acontece no Estoque: `POST /api/auth/login` ([AuthController.cs](Korp.Estoque.API/Controllers/AuthController.cs)) valida credenciais em configuração (`Auth__Username`/`Auth__Password`, padrão `gabriel`/`senha123`) e emite um token JWT assinado com `Jwt__Key`. O token expira em 8 horas por padrão (`Jwt__ExpiresHours`).
 - Os controllers `EstoqueController` e `NotaFiscalController` usam `[Authorize]` + JWT Bearer (validado via `Microsoft.AspNetCore.Authentication.JwtBearer`).
 - O Faturamento **propaga o token** recebido ao chamar o Estoque (baixa de estoque) via `PropagarAutorizacao`, além de repassar o `X-Request-Id`.
-- No frontend, [auth.service.ts](Korp-Frontend-Gabriel/src/app/core/services/auth.service.ts) guarda o token em `localStorage`, decodifica o payload (`sub`) para exibir o usuário logado, e o interceptor [auth.interceptor.ts](Korp-Frontend-Gabriel/src/app/core/interceptors/auth.interceptor.ts) anexa `Authorization: Bearer <token>` em toda requisição. A rota de login e o guard de autenticação protegem as páginas internas.
+- **Rate limit no login** — `AddRateLimiter` registra a política `login` (janela fixa de 30 requisições/minuto por IP, retorno `429 Too Many Requests`), aplicada via `[EnableRateLimiting("login")]` no `AuthController`.
+- No frontend, [auth.service.ts](Korp-Frontend-Gabriel/src/app/core/services/auth.service.ts) guarda o token em `localStorage` e valida o claim `exp` do JWT (com decodificação base64url correta, tratando `-`/`_` e padding): token vencido é removido do `localStorage` e `autenticado` fica `false`. O interceptor [auth.interceptor.ts](Korp-Frontend-Gabriel/src/app/core/interceptors/auth.interceptor.ts) anexa `Authorization: Bearer <token>` em toda requisição (somente se o token ainda for válido). Em `401` (exceto na própria rota de login), o [http-error.interceptor.ts](Korp-Frontend-Gabriel/src/app/core/interceptors/http-error.interceptor.ts) faz `logout` e redireciona para `/login`. A rota de login e o guard de autenticação protegem as páginas internas.
 
 4) Logging estruturado e rastreabilidade
 - Serilog com `WriteTo.Console` (outputTemplate estruturado) é configurado em ambas as APIs via `builder.Host.UseSerilog(...)`.
@@ -34,6 +35,7 @@
 
 7) Versionamento de API
 - `Asp.Versioning.Mvc` com versão default `1.0` (`AssumeDefaultVersionWhenUnspecified`), `ReportApiVersions` habilitado e `[ApiVersion("1.0")]` nos controllers — os endpoints existentes continuam funcionando sem header de versão.
+- **OpenAPI / Swagger** — documento OpenAPI v1 gerado nativamente (`AddOpenApi` + `MapOpenApi`), com Swagger UI em `/swagger`. O esquema de segurança JWT (`bearer`, http/bearer/JWT) é registrado via `AddDocumentTransformer` usando a API do **Microsoft.OpenApi v2** (sem `OpenApiReference`): `OpenApiSecurityScheme` em `document.Components.SecuritySchemes["bearer"]` e `OpenApiSecuritySchemeReference("bearer", document, null)` adicionado a `document.Security` — o que habilita o botão **Authorize** no Swagger para as rotas protegidas.
 
 8) Resiliência
 - HttpClient do Faturamento usa Polly (retry + circuit-breaker) para chamadas ao Estoque.
@@ -51,6 +53,7 @@
   - Asp.Versioning.Mvc — versionamento de API.
   - Serilog.AspNetCore — logging estruturado.
   - Microsoft.AspNetCore.Authentication.JwtBearer — autenticação JWT.
+  - Microsoft.AspNetCore.RateLimiting — rate limit do login (política `login`).
 - Frontend (Angular):
   - @angular/* (core, common, router, http, forms) — framework Angular.
   - zone.js — runtime requerido pelo Angular.
@@ -80,7 +83,7 @@
   - Ex.: em [EstoqueController](Korp.Estoque.API/Controllers/EstoqueController.cs) as operações de persistência são envolvidas em try/catch que trata `DbUpdateConcurrencyException` separadamente (retorna 409) e `Exception` (retorna 500, logada via ILogger sem vazar detalhes), gravando respostas de idempotência quando necessário.
   - Em [NotaFiscalController](Korp.Faturamento.API/Controllers/NotaFiscalController.cs) há tratamento de `HttpRequestException` e `Polly.CircuitBreaker.BrokenCircuitException` (retornam 503 quando o serviço de Estoque está indisponível) e `Exception` geral (500 logada).
 - Inicialização resiliente: `DatabaseBootstrap.EnsureMigrated()` (com try/catch em `Program.cs`) — erros na conexão ao PostgreSQL são logados e o serviço permanece em modo degradado, com endpoint `/health` que verifica a conectividade real do banco.
-- Idempotência e compensação: quando uma operação crítica (ex.: impressão de nota) falha parcialmente, o código executa compensações (estornos) para reverter alterações já aplicadas (ver `CompensarItens` em [NotaFiscalController](Korp.Faturamento.API/Controllers/NotaFiscalController.cs)).
+- Idempotência e compensação: apenas operações **confirmadas** (sucesso) gravam resposta em `IdempotencyEntries` para replay — falhas (404/400/409/500) **não** são cacheadas, permitindo que retries re-executem a operação. Quando uma operação crítica (ex.: impressão de nota) falha parcialmente, o código executa compensações (estornos) para reverter alterações já aplicadas — `CompensarItens` em [NotaFiscalController](Korp.Faturamento.API/Controllers/NotaFiscalController.cs) roda tanto na falha de um item quanto nos `catch` de `HttpRequestException`/`BrokenCircuitException` (503) e `Exception` geral (500).
 
 15) Uso de LINQ (caso C#)
 - Sim — o projeto usa LINQ extensivamente para consultas e transformações:
@@ -92,4 +95,4 @@
 - Unit tests (backend): xUnit em [Korp.Tests](Korp.Tests) cobrindo cadastro/baixa/estorno de estoque, idempotência e criação/consulta de notas com EF InMemory.
 - Testes de integração/concorrência: [Korp.Estoque.API/IntegrationTests.cs](Korp.Estoque.API/IntegrationTests.cs) (xUnit, autenticado via JWT, roda contra os serviços em execução).
 - E2E (frontend): Playwright em [Korp-Frontend-Gabriel/e2e](Korp-Frontend-Gabriel/e2e), executado com `npm run e2e` contra `http://localhost:4200`.
-- CI: GitHub Actions em [.github/workflows/ci.yml](.github/workflows/ci.yml) — jobs de backend (build + unit tests), frontend (build + unit tests) e e2e (compose + integração + Playwright).
+- CI: GitHub Actions em [.github/workflows/ci.yml](.github/workflows/ci.yml) — jobs de backend (build + unit tests), frontend (build + unit tests) e e2e (compose + integração + Playwright). O job de integração/e2e instala .NET 6 e .NET 10 (`dotnet-version` via bloco escalar), e os browsers do Playwright são cacheados com `actions/cache` (`~/.cache/ms-playwright`) — o `.dockerignore` reduz o contexto de build do compose.
