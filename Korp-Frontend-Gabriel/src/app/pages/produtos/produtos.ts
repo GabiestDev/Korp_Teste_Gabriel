@@ -71,6 +71,7 @@ export class ProdutosComponent implements AfterViewInit {
         this.dataSource.data = produtos;
         setTimeout(() => this.conectarDataSource());
       },
+      error: () => {},
     });
   }
 

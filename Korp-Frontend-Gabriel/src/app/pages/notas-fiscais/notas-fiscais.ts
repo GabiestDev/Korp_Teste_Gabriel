@@ -83,6 +83,7 @@ export class NotasFiscaisComponent implements AfterViewInit {
           this.itemForm.patchValue({ produtoId: produtos[0].id });
         }
       },
+      error: () => {},
     });
   }
 
@@ -93,6 +94,7 @@ export class NotasFiscaisComponent implements AfterViewInit {
         this.dataSource.data = notas;
         setTimeout(() => this.conectarDataSource());
       },
+      error: () => {},
     });
   }
 
@@ -153,6 +155,7 @@ export class NotasFiscaisComponent implements AfterViewInit {
           setTimeout(() => this.conectarDataSource());
           this.mensagemService.mostrarSucesso('Nota fiscal impressa e fechada com sucesso!', 200);
         },
+        error: () => {},
       });
   }
 

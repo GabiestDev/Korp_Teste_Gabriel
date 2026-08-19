@@ -16,10 +16,17 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       const ehLogin = req.url.includes('/auth/login');
 
-      if (error.status === 401 && !ehLogin) {
-        mensagemService.mostrarErro('Sessão expirada ou inválida. Faça login novamente.');
-        authService.logout();
-        router.navigate(['/login']);
+      if (error.status === 401 && !ehLogin && !router.url.startsWith('/login')) {
+        if (!redirecionandoSessao) {
+          redirecionandoSessao = true;
+          mensagemService.mostrarErro('Sessão expirada ou inválida. Faça login novamente.');
+          authService.logout();
+          router.navigate(['/login']).finally(() => (redirecionandoSessao = false));
+        }
+        return throwError(() => error);
+      }
+
+      if (ehLogin) {
         return throwError(() => error);
       }
 
@@ -29,6 +36,8 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
+
+let redirecionandoSessao = false;
 
 function extrairMensagem(error: HttpErrorResponse): { mensagem: string; statusCode?: number } {
   const corpo = error.error as MensagemApi | undefined;
