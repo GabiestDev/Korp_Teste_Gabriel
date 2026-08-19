@@ -5,6 +5,7 @@ using Korp.Estoque.API.DTOs;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Korp.Estoque.API.Controllers
@@ -13,6 +14,7 @@ namespace Korp.Estoque.API.Controllers
     [ApiVersion("1.0")]
     [Route("api/[controller]")]
     [AllowAnonymous]
+    [EnableRateLimiting("login")]
     public class AuthController : ControllerBase
     {
         private readonly IConfiguration _config;

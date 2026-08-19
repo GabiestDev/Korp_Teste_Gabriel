@@ -177,35 +177,35 @@ namespace Korp.Faturamento.API.Controllers
             if (nota.Status != StatusNota.Aberta)
                 return BadRequest(ApiResponse.Error(400, "Apenas notas com status 'Aberta' podem ser impressas."));
 
+            var estoqueClient = _httpClientFactory.CreateClient("EstoqueClient");
+
+            var succeeded = new List<NotaFiscalItem>();
+
+            // Best-effort compensation: reverses stock already baixado for succeeded items.
+            async Task CompensarItens()
+            {
+                foreach (var s in succeeded)
+                {
+                    var estornarPayload = new { ProdutoId = s.ProdutoId, Quantidade = s.Quantidade };
+                    try
+                    {
+                        var estornarReq = new HttpRequestMessage(HttpMethod.Post, "/api/estoque/estornar")
+                        {
+                            Content = System.Net.Http.Json.JsonContent.Create(estornarPayload)
+                        };
+                        PropagarAutorizacao(estornarReq);
+                        if (!string.IsNullOrEmpty(idempotencyKey))
+                        {
+                            estornarReq.Headers.Add("X-Idempotency-Key", $"{idempotencyKey}-nota-{nota.Id}-item-{s.ProdutoId}-estorno");
+                        }
+                        await estoqueClient.SendAsync(estornarReq);
+                    }
+                    catch { /* swallow - best effort */ }
+                }
+            }
+
             try
             {
-                var estoqueClient = _httpClientFactory.CreateClient("EstoqueClient");
-
-                var succeeded = new List<NotaFiscalItem>();
-
-                // Best-effort compensation: reverses stock already baixado for succeeded items.
-                async Task CompensarItens()
-                {
-                    foreach (var s in succeeded)
-                    {
-                        var estornarPayload = new { ProdutoId = s.ProdutoId, Quantidade = s.Quantidade };
-                        try
-                        {
-                            var estornarReq = new HttpRequestMessage(HttpMethod.Post, "/api/estoque/estornar")
-                            {
-                                Content = System.Net.Http.Json.JsonContent.Create(estornarPayload)
-                            };
-                            PropagarAutorizacao(estornarReq);
-                            if (!string.IsNullOrEmpty(idempotencyKey))
-                            {
-                                estornarReq.Headers.Add("X-Idempotency-Key", $"{idempotencyKey}-nota-{nota.Id}-item-{s.ProdutoId}-estorno");
-                            }
-                            await estoqueClient.SendAsync(estornarReq);
-                        }
-                        catch { /* swallow - best effort */ }
-                    }
-                }
-
                 foreach (var item in nota.Itens)
                 {
                     var payload = new { ProdutoId = item.ProdutoId, Quantidade = item.Quantidade };
@@ -286,14 +286,17 @@ namespace Korp.Faturamento.API.Controllers
             }
             catch (HttpRequestException)
             {
+                await CompensarItens();
                 return StatusCode(503, ApiResponse.Error(503, "O serviço de estoque está temporariamente indisponível. A impressão foi cancelada."));
             }
             catch (Polly.CircuitBreaker.BrokenCircuitException)
             {
+                await CompensarItens();
                 return StatusCode(503, ApiResponse.Error(503, "O serviço de estoque está temporariamente indisponível. A impressão foi cancelada."));
             }
             catch (Exception ex)
             {
+                await CompensarItens();
                 _logger.LogError(ex, "Erro interno durante a impressão da nota {NotaId}.", id);
                 return StatusCode(500, ApiResponse.Error(500, "Erro interno durante a impressão."));
             }
